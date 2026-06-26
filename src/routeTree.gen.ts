@@ -19,6 +19,7 @@ import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
 import { Route as AdminPhotosRouteImport } from './routes/admin.photos'
+import { Route as AdminOnboardingRouteImport } from './routes/admin.onboarding'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminBookingsRouteImport } from './routes/admin.bookings'
 
@@ -72,6 +73,11 @@ const AdminPhotosRoute = AdminPhotosRouteImport.update({
   path: '/photos',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminOnboardingRoute = AdminOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/projects': typeof ProjectsRouteWithChildren
   '/admin/bookings': typeof AdminBookingsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/photos': typeof AdminPhotosRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/projects': typeof ProjectsRouteWithChildren
   '/admin/bookings': typeof AdminBookingsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/photos': typeof AdminPhotosRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/projects': typeof ProjectsRouteWithChildren
   '/admin/bookings': typeof AdminBookingsRoute
   '/admin/login': typeof AdminLoginRoute
+  '/admin/onboarding': typeof AdminOnboardingRoute
   '/admin/photos': typeof AdminPhotosRoute
   '/admin/projects': typeof AdminProjectsRoute
   '/admin/settings': typeof AdminSettingsRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/admin/bookings'
     | '/admin/login'
+    | '/admin/onboarding'
     | '/admin/photos'
     | '/admin/projects'
     | '/admin/settings'
@@ -147,6 +157,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/admin/bookings'
     | '/admin/login'
+    | '/admin/onboarding'
     | '/admin/photos'
     | '/admin/projects'
     | '/admin/settings'
@@ -161,6 +172,7 @@ export interface FileRouteTypes {
     | '/projects'
     | '/admin/bookings'
     | '/admin/login'
+    | '/admin/onboarding'
     | '/admin/photos'
     | '/admin/projects'
     | '/admin/settings'
@@ -249,6 +261,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminPhotosRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/onboarding': {
+      id: '/admin/onboarding'
+      path: '/onboarding'
+      fullPath: '/admin/onboarding'
+      preLoaderRoute: typeof AdminOnboardingRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/login': {
       id: '/admin/login'
       path: '/login'
@@ -269,6 +288,7 @@ declare module '@tanstack/react-router' {
 interface AdminRouteChildren {
   AdminBookingsRoute: typeof AdminBookingsRoute
   AdminLoginRoute: typeof AdminLoginRoute
+  AdminOnboardingRoute: typeof AdminOnboardingRoute
   AdminPhotosRoute: typeof AdminPhotosRoute
   AdminProjectsRoute: typeof AdminProjectsRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
@@ -278,6 +298,7 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminBookingsRoute: AdminBookingsRoute,
   AdminLoginRoute: AdminLoginRoute,
+  AdminOnboardingRoute: AdminOnboardingRoute,
   AdminPhotosRoute: AdminPhotosRoute,
   AdminProjectsRoute: AdminProjectsRoute,
   AdminSettingsRoute: AdminSettingsRoute,
