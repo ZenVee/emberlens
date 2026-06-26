@@ -17,7 +17,6 @@ function AdminSettings() {
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <Field label="Studio name" defaultValue="Ember Lens" />
             <Field label="Tagline" defaultValue="Capturing Los Santos, one frame at a time." />
-            <Field label="Email" defaultValue="hello@emberlens.ls" />
             <Field label="Location" defaultValue="Vinewood Blvd, Los Santos" />
             <div className="sm:col-span-2">
               <label className="text-sm text-muted-foreground">Bio</label>

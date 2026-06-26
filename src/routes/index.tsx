@@ -185,7 +185,7 @@ function Index() {
           </div>
           <form className="grid gap-4 sm:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
             <input className="rounded-xl border border-border bg-background/60 px-4 py-3 text-sm outline-none focus:border-ember" placeholder="Your name" />
-            <input className="rounded-xl border border-border bg-background/60 px-4 py-3 text-sm outline-none focus:border-ember" placeholder="Email or Discord" />
+            <input className="rounded-xl border border-border bg-background/60 px-4 py-3 text-sm outline-none focus:border-ember" placeholder="Your name" />
             <select className="rounded-xl border border-border bg-background/60 px-4 py-3 text-sm outline-none focus:border-ember sm:col-span-2">
               <option>Portrait session</option>
               <option>Automotive shoot</option>

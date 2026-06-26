@@ -2,27 +2,26 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequestUrl } from "@tanstack/react-start/server";
 import type { User } from "@supabase/supabase-js";
 
+import { profileNeedsOnboarding, syncProfileForUser, type Profile } from "./profile";
 import { getSupabaseServerClient } from "./supabase";
 
 export type AuthUser = {
   id: string;
-  email: string | undefined;
   name: string;
   avatarUrl: string | null;
+  isAdmin: boolean;
+  needsOnboarding: boolean;
 };
 
-function toAuthUser(user: User): AuthUser {
-  const metadata = user.user_metadata ?? {};
+function toAuthUser(user: User, profile: Profile): AuthUser {
+  const needsOnboarding = profileNeedsOnboarding(profile);
+
   return {
     id: user.id,
-    email: user.email,
-    name:
-      (metadata.full_name as string | undefined) ??
-      (metadata.name as string | undefined) ??
-      (metadata.user_name as string | undefined) ??
-      user.email ??
-      "Studio",
-    avatarUrl: (metadata.avatar_url as string | undefined) ?? null,
+    name: profile.display_name?.trim() || "Studio",
+    avatarUrl: profile.avatar_url,
+    isAdmin: profile.is_admin,
+    needsOnboarding,
   };
 }
 
@@ -34,7 +33,8 @@ export const fetchUser = createServerFn({ method: "GET" }).handler(async (): Pro
     return null;
   }
 
-  return toAuthUser(data.user);
+  const profile = await syncProfileForUser(supabase, data.user);
+  return toAuthUser(data.user, profile);
 });
 
 export const signOut = createServerFn({ method: "POST" }).handler(async () => {
@@ -49,7 +49,6 @@ export const signOut = createServerFn({ method: "POST" }).handler(async () => {
 export const handleAuthCallback = createServerFn({ method: "GET" }).handler(async () => {
   const url = getRequestUrl();
   const code = url.searchParams.get("code");
-  const next = url.searchParams.get("next") ?? "/admin";
 
   if (!code) {
     return { error: "Missing authorization code", next: "/admin/login" };
@@ -61,6 +60,24 @@ export const handleAuthCallback = createServerFn({ method: "GET" }).handler(asyn
   if (error) {
     return { error: error.message, next: "/admin/login" };
   }
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { error: userError?.message ?? "Could not load user.", next: "/admin/login" };
+  }
+
+  const profile = await syncProfileForUser(supabase, user);
+
+  if (!profile.is_admin) {
+    await supabase.auth.signOut();
+    return { error: "You do not have studio admin access.", next: "/admin/login" };
+  }
+
+  const next = profileNeedsOnboarding(profile) ? "/admin/onboarding" : "/admin";
 
   return { error: null, next };
 });

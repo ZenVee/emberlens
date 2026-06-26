@@ -105,7 +105,6 @@ export function SiteFooter() {
         </div>
         <div className="text-sm text-muted-foreground">
           <p className="mb-2 font-medium text-foreground">Contact</p>
-          <p>hello@emberlens.ls</p>
           <p>@emberlens / RP-only studio</p>
         </div>
       </div>
