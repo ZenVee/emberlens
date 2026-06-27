@@ -1,11 +1,26 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ImagePlus, Loader2, Plus, Trash2 } from "lucide-react";
+import {
+  Building2,
+  FileText,
+  Home,
+  ImagePlus,
+  Loader2,
+  PanelBottom,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { AdminLoading } from "@/components/admin-loading";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { useAdminSiteSettings } from "@/lib/admin-queries";
 import { siteSettingsQueryKey } from "@/lib/query-keys";
 import {
@@ -19,6 +34,16 @@ import {
   type SiteSettingsForm,
   type SiteService,
 } from "@/lib/site-settings-types";
+import { cn } from "@/lib/utils";
+
+const TABS = [
+  { value: "brand", label: "Brand", icon: Building2 },
+  { value: "homepage", label: "Homepage", icon: Home },
+  { value: "pages", label: "Pages", icon: FileText },
+  { value: "footer", label: "Footer", icon: PanelBottom },
+] as const;
+
+type SettingsTab = (typeof TABS)[number]["value"];
 
 export const Route = createFileRoute("/admin/settings")({
   head: () => ({ meta: [{ title: "Settings — Ember Lens Studio" }] }),
@@ -35,6 +60,7 @@ function AdminSettings() {
 
   const [form, setForm] = useState<SiteSettingsForm | null>(null);
   const [heroUrl, setHeroUrl] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<SettingsTab>("brand");
   const [saving, setSaving] = useState(false);
   const [uploadingHero, setUploadingHero] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -46,7 +72,10 @@ function AdminSettings() {
     setHeroUrl(data.hero_image_url);
   }, [data]);
 
-  useAdminPageMeta({ title: "Settings", subtitle: "Manage your public studio site." });
+  useAdminPageMeta({
+    title: "Settings",
+    subtitle: "Brand, homepage copy, and public page content.",
+  });
 
   function syncSettings(settings: SiteSettings) {
     queryClient.setQueryData(siteSettingsQueryKey, settings);
@@ -138,63 +167,101 @@ function AdminSettings() {
   }
 
   return (
-    <>
-      {message && (
-        <p className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
-          {message}
-        </p>
-      )}
-      {(error || isError) && (
-        <p className="mb-4 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error ?? (loadError instanceof Error ? loadError.message : "Could not load settings.")}
-        </p>
+    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SettingsTab)} className="space-y-6">
+      {(message || error || isError) && (
+        <div className="space-y-2">
+          {message && (
+            <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-400">
+              {message}
+            </p>
+          )}
+          {(error || isError) && (
+            <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
+              {error ?? (loadError instanceof Error ? loadError.message : "Could not load settings.")}
+            </p>
+          )}
+        </div>
       )}
 
-      <div className="space-y-6">
-        <SettingsSection
-          title="Studio"
-          description="Core details shown across your public site."
+      <div className="sticky top-16 z-20 -mx-4 flex flex-col gap-3 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur-sm sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 md:-mx-8 md:px-8">
+        <TabsList className="h-auto w-full justify-start gap-1 overflow-x-auto bg-secondary/60 p-1 sm:w-auto">
+          {TABS.map(({ value, label, icon: Icon }) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="gap-1.5 px-3 py-2 data-[state=active]:shadow-sm"
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        <Button
+          type="button"
+          disabled={saving}
+          onClick={() => void handleSave()}
+          className="shrink-0 rounded-full bg-gradient-ember shadow-glow hover:opacity-90"
         >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Studio name"
-              value={form.studio_name}
-              onChange={(value) => updateField("studio_name", value)}
-            />
-            <Field
-              label="Tagline"
-              value={form.tagline}
-              onChange={(value) => updateField("tagline", value)}
-            />
-            <Field
-              label="Location"
-              value={form.location}
-              onChange={(value) => updateField("location", value)}
-              className="sm:col-span-2"
-            />
-            <TextArea
-              label="Bio"
-              rows={4}
-              value={form.bio}
-              onChange={(value) => updateField("bio", value)}
-              className="sm:col-span-2"
-            />
+          {saving ? (
+            <>
+              <Loader2 className="animate-spin" /> Saving…
+            </>
+          ) : (
+            "Save changes"
+          )}
+        </Button>
+      </div>
+
+      <TabsContent value="brand" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+        <SettingsPanel
+          title="Studio identity"
+          description="Name, location, and bio shown across your public site."
+        >
+          <div className="grid gap-5 sm:grid-cols-2">
+            <FormField label="Studio name">
+              <Input
+                value={form.studio_name}
+                onChange={(e) => updateField("studio_name", e.target.value)}
+              />
+            </FormField>
+            <FormField label="Tagline">
+              <Input
+                value={form.tagline}
+                onChange={(e) => updateField("tagline", e.target.value)}
+              />
+            </FormField>
+            <FormField label="Location" className="sm:col-span-2">
+              <Input
+                value={form.location}
+                onChange={(e) => updateField("location", e.target.value)}
+              />
+            </FormField>
+            <FormField label="Bio" className="sm:col-span-2">
+              <Textarea
+                rows={4}
+                value={form.bio}
+                onChange={(e) => updateField("bio", e.target.value)}
+              />
+            </FormField>
           </div>
-        </SettingsSection>
+        </SettingsPanel>
+      </TabsContent>
 
-        <SettingsSection
+      <TabsContent value="homepage" className="mt-0 space-y-6 focus-visible:outline-none focus-visible:ring-0">
+        <SettingsPanel
           title="Hero"
-          description="Homepage hero image and headline copy."
+          description="Homepage banner image and headline."
         >
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+          <div className="grid gap-6 lg:grid-cols-2">
             <div>
-              <p className="text-sm text-muted-foreground">Hero image</p>
-              <div className="mt-2 overflow-hidden rounded-2xl border border-border/60 bg-secondary">
+              <Label className="text-muted-foreground">Hero image</Label>
+              <div className="mt-2 overflow-hidden rounded-xl border border-border bg-secondary/50">
                 {heroUrl ? (
                   <img src={heroUrl} alt="" className="aspect-[16/10] w-full object-cover" />
                 ) : (
-                  <div className="flex aspect-[16/10] items-center justify-center text-sm text-muted-foreground">
-                    No hero image yet
+                  <div className="flex aspect-[16/10] flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <ImagePlus className="h-6 w-6 opacity-50" />
+                    No image yet
                   </div>
                 )}
               </div>
@@ -209,237 +276,273 @@ function AdminSettings() {
                 }}
               />
               <div className="mt-3 flex flex-wrap gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   disabled={uploadingHero}
                   onClick={() => heroRef.current?.click()}
-                  className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-4 py-2 text-sm hover:bg-secondary disabled:opacity-60"
+                  className="rounded-full"
                 >
                   {uploadingHero ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="animate-spin" />
                   ) : (
-                    <ImagePlus className="h-4 w-4" />
+                    <ImagePlus />
                   )}
-                  {heroUrl ? "Replace image" : "Upload image"}
-                </button>
+                  {heroUrl ? "Replace" : "Upload"}
+                </Button>
                 {heroUrl && (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     disabled={uploadingHero}
                     onClick={() => void handleRemoveHero()}
-                    className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground hover:text-destructive disabled:opacity-60"
+                    className="rounded-full text-muted-foreground hover:text-destructive"
                   >
-                    <Trash2 className="h-4 w-4" /> Remove
-                  </button>
+                    <Trash2 /> Remove
+                  </Button>
                 )}
               </div>
             </div>
-            <div className="space-y-4">
-              <Field
-                label="Hero title"
-                value={form.hero_title}
-                onChange={(value) => updateField("hero_title", value)}
-              />
-              <TextArea
-                label="Hero text"
-                rows={5}
-                value={form.hero_text}
-                onChange={(value) => updateField("hero_text", value)}
-              />
+            <div className="space-y-5">
+              <FormField label="Headline">
+                <Input
+                  value={form.hero_title}
+                  onChange={(e) => updateField("hero_title", e.target.value)}
+                />
+              </FormField>
+              <FormField label="Supporting text">
+                <Textarea
+                  rows={5}
+                  value={form.hero_text}
+                  onChange={(e) => updateField("hero_text", e.target.value)}
+                />
+              </FormField>
             </div>
           </div>
-        </SettingsSection>
+        </SettingsPanel>
 
-        <SettingsSection
-          title="Footer"
-          description="Footer columns and copyright line."
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Footer tagline"
-              value={form.footer_tagline}
-              onChange={(value) => updateField("footer_tagline", value)}
-              className="sm:col-span-2"
-            />
-            <Field
-              label="Studio column heading"
-              value={form.footer_studio_heading}
-              onChange={(value) => updateField("footer_studio_heading", value)}
-            />
-            <Field
-              label="Contact column heading"
-              value={form.footer_contact_heading}
-              onChange={(value) => updateField("footer_contact_heading", value)}
-            />
-            <TextArea
-              label="Studio column content"
-              hint="One line per row"
-              rows={3}
-              value={form.footer_studio_body}
-              onChange={(value) => updateField("footer_studio_body", value)}
-            />
-            <TextArea
-              label="Contact column content"
-              hint="One line per row"
-              rows={3}
-              value={form.footer_contact_body}
-              onChange={(value) => updateField("footer_contact_body", value)}
-            />
-            <Field
-              label="Copyright"
-              value={form.footer_copyright}
-              onChange={(value) => updateField("footer_copyright", value)}
-              className="sm:col-span-2"
-            />
-          </div>
-        </SettingsSection>
-
-        <SettingsSection
+        <SettingsPanel
           title="Services"
-          description="Homepage services cards shown on the front page."
+          description="Cards displayed on the homepage."
         >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Eyebrow"
-              value={form.services_eyebrow}
-              onChange={(value) => updateField("services_eyebrow", value)}
-            />
-            <Field
-              label="Section title"
-              value={form.services_title}
-              onChange={(value) => updateField("services_title", value)}
-            />
+          <div className="grid gap-5 sm:grid-cols-2">
+            <FormField label="Section eyebrow">
+              <Input
+                value={form.services_eyebrow}
+                onChange={(e) => updateField("services_eyebrow", e.target.value)}
+              />
+            </FormField>
+            <FormField label="Section title">
+              <Input
+                value={form.services_title}
+                onChange={(e) => updateField("services_title", e.target.value)}
+              />
+            </FormField>
           </div>
-          <div className="mt-6 space-y-4">
+
+          <div className="mt-6 space-y-3">
             {form.services.map((service, index) => (
-              <div key={index} className="rounded-xl border border-border/60 bg-background/50 p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <p className="text-sm font-medium">Service {index + 1}</p>
-                  <button
+              <div
+                key={index}
+                className="rounded-xl border border-border/60 bg-background/40 p-4"
+              >
+                <div className="mb-4 flex items-center justify-between gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-md bg-secondary text-xs font-medium text-muted-foreground">
+                    {index + 1}
+                  </span>
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
                     onClick={() =>
                       updateField(
                         "services",
                         form.services.filter((_, i) => i !== index),
                       )
                     }
-                    className="grid h-8 w-8 place-items-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-destructive"
-                    aria-label="Remove service"
+                    className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    aria-label={`Remove service ${index + 1}`}
                   >
                     <Trash2 className="h-4 w-4" />
-                  </button>
+                  </Button>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field
-                    label="Title"
-                    value={service.title}
-                    onChange={(value) => updateService(index, { title: value })}
-                  />
-                  <Field
-                    label="Price"
-                    value={service.price}
-                    onChange={(value) => updateService(index, { price: value })}
-                  />
-                  <TextArea
-                    label="Description"
-                    rows={3}
-                    value={service.description}
-                    onChange={(value) => updateService(index, { description: value })}
-                    className="sm:col-span-2"
-                  />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <FormField label="Title">
+                    <Input
+                      value={service.title}
+                      onChange={(e) => updateService(index, { title: e.target.value })}
+                    />
+                  </FormField>
+                  <FormField label="Price">
+                    <Input
+                      value={service.price}
+                      onChange={(e) => updateService(index, { price: e.target.value })}
+                    />
+                  </FormField>
+                  <FormField label="Description" className="sm:col-span-2">
+                    <Textarea
+                      rows={2}
+                      value={service.description}
+                      onChange={(e) => updateService(index, { description: e.target.value })}
+                    />
+                  </FormField>
                 </div>
               </div>
             ))}
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() =>
                 updateField("services", [
                   ...form.services,
                   { title: "", description: "", price: "" },
                 ])
               }
-              className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm hover:bg-secondary"
+              className="rounded-full"
             >
-              <Plus className="h-4 w-4" /> Add service
-            </button>
+              <Plus /> Add service
+            </Button>
           </div>
-        </SettingsSection>
+        </SettingsPanel>
+      </TabsContent>
 
-        <SettingsSection
-          title="Gallery"
-          description="Public gallery page header and behavior."
+      <TabsContent value="pages" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <SettingsPanel
+            title="Gallery page"
+            description="Header copy for the public gallery."
+          >
+            <div className="space-y-5">
+              <FormField label="Eyebrow">
+                <Input
+                  value={form.gallery_eyebrow}
+                  onChange={(e) => updateField("gallery_eyebrow", e.target.value)}
+                />
+              </FormField>
+              <FormField label="Page title">
+                <Input
+                  value={form.gallery_title}
+                  onChange={(e) => updateField("gallery_title", e.target.value)}
+                />
+              </FormField>
+              <FormField label="Page description">
+                <Textarea
+                  rows={3}
+                  value={form.gallery_description}
+                  onChange={(e) => updateField("gallery_description", e.target.value)}
+                />
+              </FormField>
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-background/40 px-4 py-3">
+                <div className="space-y-0.5">
+                  <Label htmlFor="gallery-categories">Category filters</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Let visitors filter photos by category.
+                  </p>
+                </div>
+                <Switch
+                  id="gallery-categories"
+                  checked={form.gallery_show_categories}
+                  onCheckedChange={(checked) => updateField("gallery_show_categories", checked)}
+                />
+              </div>
+            </div>
+          </SettingsPanel>
+
+          <SettingsPanel
+            title="Projects page"
+            description="Header copy for the public projects list."
+          >
+            <div className="space-y-5">
+              <FormField label="Eyebrow">
+                <Input
+                  value={form.projects_eyebrow}
+                  onChange={(e) => updateField("projects_eyebrow", e.target.value)}
+                />
+              </FormField>
+              <FormField label="Page title">
+                <Input
+                  value={form.projects_title}
+                  onChange={(e) => updateField("projects_title", e.target.value)}
+                />
+              </FormField>
+              <FormField label="Page description">
+                <Textarea
+                  rows={3}
+                  value={form.projects_description}
+                  onChange={(e) => updateField("projects_description", e.target.value)}
+                />
+              </FormField>
+            </div>
+          </SettingsPanel>
+        </div>
+      </TabsContent>
+
+      <TabsContent value="footer" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+        <SettingsPanel
+          title="Site footer"
+          description="Columns and copyright shown at the bottom of every page."
         >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Eyebrow"
-              value={form.gallery_eyebrow}
-              onChange={(value) => updateField("gallery_eyebrow", value)}
-            />
-            <ToggleRow
-              label="Show category filters"
-              description="Let visitors filter the gallery by category."
-              checked={form.gallery_show_categories}
-              onChange={(checked) => updateField("gallery_show_categories", checked)}
-            />
-            <Field
-              label="Page title"
-              value={form.gallery_title}
-              onChange={(value) => updateField("gallery_title", value)}
-              className="sm:col-span-2"
-            />
-            <TextArea
-              label="Page description"
-              rows={3}
-              value={form.gallery_description}
-              onChange={(value) => updateField("gallery_description", value)}
-              className="sm:col-span-2"
-            />
+          <div className="space-y-5">
+            <FormField label="Footer tagline">
+              <Input
+                value={form.footer_tagline}
+                onChange={(e) => updateField("footer_tagline", e.target.value)}
+              />
+            </FormField>
+
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="space-y-5 rounded-xl border border-border/60 bg-background/40 p-4">
+                <p className="text-sm font-medium">Studio column</p>
+                <FormField label="Heading">
+                  <Input
+                    value={form.footer_studio_heading}
+                    onChange={(e) => updateField("footer_studio_heading", e.target.value)}
+                  />
+                </FormField>
+                <FormField label="Content" hint="One line per row">
+                  <Textarea
+                    rows={3}
+                    value={form.footer_studio_body}
+                    onChange={(e) => updateField("footer_studio_body", e.target.value)}
+                  />
+                </FormField>
+              </div>
+
+              <div className="space-y-5 rounded-xl border border-border/60 bg-background/40 p-4">
+                <p className="text-sm font-medium">Contact column</p>
+                <FormField label="Heading">
+                  <Input
+                    value={form.footer_contact_heading}
+                    onChange={(e) => updateField("footer_contact_heading", e.target.value)}
+                  />
+                </FormField>
+                <FormField label="Content" hint="One line per row">
+                  <Textarea
+                    rows={3}
+                    value={form.footer_contact_body}
+                    onChange={(e) => updateField("footer_contact_body", e.target.value)}
+                  />
+                </FormField>
+              </div>
+            </div>
+
+            <FormField label="Copyright line">
+              <Input
+                value={form.footer_copyright}
+                onChange={(e) => updateField("footer_copyright", e.target.value)}
+              />
+            </FormField>
           </div>
-        </SettingsSection>
-
-        <SettingsSection
-          title="Projects"
-          description="Public projects listing page header."
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field
-              label="Eyebrow"
-              value={form.projects_eyebrow}
-              onChange={(value) => updateField("projects_eyebrow", value)}
-              className="sm:col-span-2"
-            />
-            <Field
-              label="Page title"
-              value={form.projects_title}
-              onChange={(value) => updateField("projects_title", value)}
-              className="sm:col-span-2"
-            />
-            <TextArea
-              label="Page description"
-              rows={3}
-              value={form.projects_description}
-              onChange={(value) => updateField("projects_description", value)}
-              className="sm:col-span-2"
-            />
-          </div>
-        </SettingsSection>
-      </div>
-
-      <div className="sticky bottom-4 mt-8 flex justify-end">
-        <button
-          type="button"
-          disabled={saving}
-          onClick={() => void handleSave()}
-          className="rounded-full bg-gradient-ember px-6 py-2.5 text-sm font-medium text-primary-foreground shadow-glow disabled:opacity-60"
-        >
-          {saving ? "Saving…" : "Save settings"}
-        </button>
-      </div>
-    </>
+        </SettingsPanel>
+      </TabsContent>
+    </Tabs>
   );
 }
 
-function SettingsSection({
+function SettingsPanel({
   title,
   description,
   children,
@@ -449,95 +552,35 @@ function SettingsSection({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-card">
-      <h2 className="font-display text-lg">{title}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      <div className="mt-6">{children}</div>
+    <section className="rounded-xl border border-border/60 bg-card p-5 shadow-card sm:p-6">
+      <header className="mb-5 border-b border-border/40 pb-4">
+        <h2 className="font-display text-base font-medium">{title}</h2>
+        <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+      </header>
+      {children}
     </section>
   );
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  className,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  className?: string;
-}) {
-  return (
-    <label className={`block text-sm ${className ?? ""}`}>
-      <span className="text-muted-foreground">{label}</span>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-ember"
-      />
-    </label>
-  );
-}
-
-function TextArea({
+function FormField({
   label,
   hint,
-  rows,
-  value,
-  onChange,
   className,
+  children,
 }: {
   label: string;
   hint?: string;
-  rows: number;
-  value: string;
-  onChange: (value: string) => void;
   className?: string;
+  children: ReactNode;
 }) {
   return (
-    <label className={`block text-sm ${className ?? ""}`}>
-      <span className="text-muted-foreground">{label}</span>
-      {hint && <span className="ml-2 text-xs text-muted-foreground/80">({hint})</span>}
-      <textarea
-        rows={rows}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1.5 w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-ember"
-      />
-    </label>
-  );
-}
-
-function ToggleRow({
-  label,
-  description,
-  checked,
-  onChange,
-}: {
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <label className="flex cursor-pointer items-center justify-between gap-4 rounded-xl border border-border/60 bg-background/50 px-4 py-3 sm:col-span-2">
-      <div>
-        <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
+    <div className={cn("space-y-2", className)}>
+      <div className="flex items-baseline gap-2">
+        <Label className="text-muted-foreground">{label}</Label>
+        {hint && <span className="text-xs text-muted-foreground/70">{hint}</span>}
       </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${checked ? "bg-ember" : "bg-muted"}`}
-      >
-        <span
-          className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform ${checked ? "translate-x-5" : ""}`}
-        />
-      </button>
-    </label>
+      {children}
+    </div>
   );
 }
 
