@@ -2,7 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Camera, Sparkles, MapPin, Mail } from "lucide-react";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { PhotoCard } from "@/components/photo-card";
-import { heroImage, photos, services, projects } from "@/lib/mock-data";
+import { MediaImage } from "@/components/media-image";
+import { heroImage, services } from "@/lib/mock-data";
+import { fetchFeaturedPhotos, fetchPublishedProjects } from "@/lib/media";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -11,10 +13,18 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Cinematic photography for Los Santos — portraits, events, automotive, lifestyle." },
     ],
   }),
+  loader: async () => {
+    const [featuredPhotos, recentProjects] = await Promise.all([
+      fetchFeaturedPhotos(),
+      fetchPublishedProjects(),
+    ]);
+    return { featuredPhotos, recentProjects };
+  },
   component: Index,
 });
 
 function Index() {
+  const { featuredPhotos, recentProjects } = Route.useLoaderData();
   return (
     <div className="min-h-screen bg-background">
       <SiteNav />
@@ -86,15 +96,19 @@ function Index() {
           </Link>
         </div>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {photos.slice(0, 8).map((p, i) => (
-            <PhotoCard
-              key={p.id}
-              src={p.src}
-              title={p.title}
-              subtitle={p.category}
-              aspect={i % 5 === 0 ? "portrait" : "square"}
-            />
-          ))}
+          {featuredPhotos.length === 0 ? (
+            <p className="col-span-full text-sm text-muted-foreground">Featured photos will appear here once published.</p>
+          ) : (
+            featuredPhotos.map((p, i) => (
+              <PhotoCard
+                key={p.id}
+                src={p.src}
+                title={p.title}
+                subtitle={p.category}
+                aspect={i % 5 === 0 ? "portrait" : "square"}
+              />
+            ))
+          )}
         </div>
       </section>
 
@@ -114,8 +128,16 @@ function Index() {
             </ul>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <img src={photos[0].src} alt="" loading="lazy" width={600} height={800} className="aspect-[3/4] w-full rounded-2xl object-cover shadow-card" />
-            <img src={photos[3].src} alt="" loading="lazy" width={600} height={600} className="mt-8 aspect-square w-full rounded-2xl object-cover shadow-card" />
+            {featuredPhotos[0] ? (
+              <img src={featuredPhotos[0].src} alt="" loading="lazy" width={600} height={800} className="aspect-[3/4] w-full rounded-2xl object-cover shadow-card" />
+            ) : (
+              <img src={heroImage} alt="" loading="lazy" width={600} height={800} className="aspect-[3/4] w-full rounded-2xl object-cover shadow-card" />
+            )}
+            {featuredPhotos[1] ? (
+              <img src={featuredPhotos[1].src} alt="" loading="lazy" width={600} height={600} className="mt-8 aspect-square w-full rounded-2xl object-cover shadow-card" />
+            ) : (
+              <img src={heroImage} alt="" loading="lazy" width={600} height={600} className="mt-8 aspect-square w-full rounded-2xl object-cover shadow-card" />
+            )}
           </div>
         </div>
       </section>
@@ -155,23 +177,37 @@ function Index() {
           </Link>
         </div>
         <div className="grid gap-5 md:grid-cols-3">
-          {projects.slice(0, 3).map((pr) => (
-            <Link
-              key={pr.id}
-              to="/projects/$slug"
-              params={{ slug: pr.slug }}
-              className="group overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card transition-all hover:-translate-y-1 hover:shadow-glow"
-            >
-              <div className="aspect-[4/3] overflow-hidden">
-                <img src={pr.cover} alt={pr.title} loading="lazy" width={800} height={600} className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
-              </div>
-              <div className="p-5">
-                <p className="text-xs uppercase tracking-wide text-ember">{pr.category}</p>
-                <h3 className="mt-1 font-display text-xl">{pr.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{pr.client} · {pr.date}</p>
-              </div>
-            </Link>
-          ))}
+          {recentProjects.length === 0 ? (
+            <p className="col-span-full text-sm text-muted-foreground">Published projects will appear here.</p>
+          ) : (
+            recentProjects.slice(0, 3).map((pr) => (
+              <Link
+                key={pr.id}
+                to="/projects/$slug"
+                params={{ slug: pr.slug }}
+                className="group overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card transition-all hover:-translate-y-1 hover:shadow-glow"
+              >
+                <div className="aspect-[4/3] overflow-hidden bg-secondary">
+                  {pr.cover ? (
+                    <MediaImage
+                      src={pr.cover}
+                      alt={pr.title}
+                      watermarked={!pr.clientPaid}
+                      loading="lazy"
+                      width={800}
+                      height={600}
+                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                  ) : null}
+                </div>
+                <div className="p-5">
+                  <p className="text-xs uppercase tracking-wide text-ember">{pr.category}</p>
+                  <h3 className="mt-1 font-display text-xl">{pr.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{pr.client} · {pr.date}</p>
+                </div>
+              </Link>
+            ))
+          )}
         </div>
       </section>
 

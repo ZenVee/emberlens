@@ -1,12 +1,15 @@
+import { MediaImage } from "./media-image";
+
 type Props = {
   src: string;
   title: string;
   subtitle?: string;
   onClick?: () => void;
   aspect?: "square" | "portrait" | "landscape";
+  watermarked?: boolean;
 };
 
-export function PhotoCard({ src, title, subtitle, onClick, aspect = "square" }: Props) {
+export function PhotoCard({ src, title, subtitle, onClick, aspect = "square", watermarked }: Props) {
   const aspectCls =
     aspect === "portrait" ? "aspect-[3/4]" : aspect === "landscape" ? "aspect-[4/3]" : "aspect-square";
   return (
@@ -14,9 +17,10 @@ export function PhotoCard({ src, title, subtitle, onClick, aspect = "square" }: 
       onClick={onClick}
       className={`group relative overflow-hidden rounded-2xl bg-card shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-glow ${aspectCls}`}
     >
-      <img
+      <MediaImage
         src={src}
         alt={title}
+        watermarked={watermarked}
         loading="lazy"
         width={800}
         height={800}

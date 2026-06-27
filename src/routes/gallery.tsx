@@ -3,28 +3,36 @@ import { useMemo, useState } from "react";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { PhotoCard } from "@/components/photo-card";
 import { Lightbox } from "@/components/lightbox";
-import { photos } from "@/lib/mock-data";
+import { fetchPublishedPhotos } from "@/lib/media";
+import { PHOTO_CATEGORIES } from "@/lib/media-types";
 
 export const Route = createFileRoute("/gallery")({
   head: () => ({
     meta: [
       { title: "Gallery — Ember Lens" },
-      { name: "description", content: "Cinematic photo gallery from Ember Lens — portraits, events, automotive, street." },
+      {
+        name: "description",
+        content: "Cinematic photo gallery from Ember Lens — portraits, events, automotive, street.",
+      },
     ],
   }),
+  loader: () => fetchPublishedPhotos(),
   component: GalleryPage,
 });
 
-const categories = ["All", "Portrait", "Automotive", "Event", "Street", "Lifestyle", "Cityscape"] as const;
+const categories = ["All", ...PHOTO_CATEGORIES] as const;
 
 function GalleryPage() {
+  const photos = Route.useLoaderData();
   const [filter, setFilter] = useState<(typeof categories)[number]>("All");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const filtered = useMemo(
     () => (filter === "All" ? photos : photos.filter((p) => p.category === filter)),
-    [filter],
+    [filter, photos],
   );
+
+  const lightboxItems = filtered.map((p) => ({ src: p.src, title: p.title }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -54,21 +62,32 @@ function GalleryPage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6">
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {filtered.map((p, i) => (
-            <PhotoCard
-              key={p.id}
-              src={p.src}
-              title={p.title}
-              subtitle={p.category}
-              aspect={i % 4 === 1 ? "portrait" : i % 4 === 2 ? "landscape" : "square"}
-              onClick={() => setOpenIndex(i)}
-            />
-          ))}
-        </div>
+        {filtered.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-border/60 px-6 py-16 text-center text-muted-foreground">
+            No published photos yet. Check back soon.
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+            {filtered.map((p, i) => (
+              <PhotoCard
+                key={p.id}
+                src={p.src}
+                title={p.title}
+                subtitle={p.category}
+                aspect={i % 4 === 1 ? "portrait" : i % 4 === 2 ? "landscape" : "square"}
+                onClick={() => setOpenIndex(i)}
+              />
+            ))}
+          </div>
+        )}
       </section>
 
-      <Lightbox items={filtered} index={openIndex} onClose={() => setOpenIndex(null)} onIndexChange={setOpenIndex} />
+      <Lightbox
+        items={lightboxItems}
+        index={openIndex}
+        onClose={() => setOpenIndex(null)}
+        onIndexChange={setOpenIndex}
+      />
       <SiteFooter />
     </div>
   );

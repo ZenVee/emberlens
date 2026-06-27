@@ -1,7 +1,9 @@
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect } from "react";
 
-type Item = { src: string; title: string };
+import { MediaImage } from "./media-image";
+
+type Item = { src: string; title: string; watermarked?: boolean };
 
 export function Lightbox({
   items,
@@ -62,9 +64,10 @@ export function Lightbox({
       </button>
 
       <figure className="max-h-[90vh] max-w-5xl" onClick={(e) => e.stopPropagation()}>
-        <img
+        <MediaImage
           src={item.src}
           alt={item.title}
+          watermarked={item.watermarked}
           className="max-h-[80vh] w-auto rounded-2xl object-contain shadow-glow"
         />
         <figcaption className="mt-3 text-center font-display text-lg text-white">
