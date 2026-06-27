@@ -2,10 +2,11 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Upload, Search, Grid3x3, List, Trash2, Pencil, Star, Eye, EyeOff } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { AdminLoading } from "@/components/admin-loading";
+import { PhotoUploadModal } from "@/components/photo-upload-modal";
 import { useAdminPhotos } from "@/lib/admin-queries";
 import { PHOTO_CATEGORIES, type DbPhoto, type PhotoCategory } from "@/lib/media-types";
 import { deletePhoto, updatePhoto, uploadPhoto } from "@/lib/media";
@@ -21,10 +22,9 @@ function AdminPhotos() {
   const queryClient = useQueryClient();
   const [view, setView] = useState<"grid" | "list">("grid");
   const [query, setQuery] = useState("");
-  const [uploading, setUploading] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<DbPhoto | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const uploadFn = useServerFn(uploadPhoto);
   const updateFn = useServerFn(updatePhoto);
@@ -43,34 +43,6 @@ function AdminPhotos() {
       (p) => p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q),
     );
   }, [photos, query]);
-
-  async function handleUpload(file: File) {
-    setUploading(true);
-    setError(null);
-    try {
-      const base64 = await fileToBase64(file);
-      const title = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
-      const result = await uploadFn({
-        data: {
-          fileBase64: base64,
-          mimeType: file.type || "image/jpeg",
-          filename: file.name,
-          title,
-          category: "Portrait",
-        },
-      });
-      if (result.error || !result.photo) {
-        setError(result.error ?? "Upload failed.");
-        return;
-      }
-      updatePhotos((prev) => [result.photo!, ...prev]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
-    }
-  }
 
   async function togglePublished(photo: DbPhoto) {
     const result = await updateFn({ data: { id: photo.id, published: !photo.published } });
@@ -145,25 +117,24 @@ function AdminPhotos() {
             <List className="h-4 w-4" />
           </button>
         </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void handleUpload(file);
-          }}
-        />
         <button
           type="button"
-          disabled={uploading}
-          onClick={() => fileRef.current?.click()}
-          className="inline-flex items-center gap-2 rounded-full bg-gradient-ember px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-glow disabled:opacity-60"
+          onClick={() => setUploadOpen(true)}
+          className="inline-flex items-center gap-2 rounded-full bg-gradient-ember px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-glow"
         >
-          <Upload className="h-4 w-4" /> {uploading ? "Uploading…" : "Upload"}
+          <Upload className="h-4 w-4" /> Upload
         </button>
       </div>
+
+      <PhotoUploadModal
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        onUpload={(data) => uploadFn({ data })}
+        onUploaded={(uploaded) => {
+          setError(null);
+          updatePhotos((prev) => [...uploaded, ...prev]);
+        }}
+      />
 
       {error && (
         <p className="mb-4 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -421,16 +392,4 @@ function PhotoGridCard({
       </div>
     </div>
   );
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      resolve(result.split(",")[1] ?? "");
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
 }
