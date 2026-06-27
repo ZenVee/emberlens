@@ -6,6 +6,7 @@ import { PhotoCard } from "@/components/photo-card";
 import { Lightbox } from "@/components/lightbox";
 import { MediaImage } from "@/components/media-image";
 import { fetchProjectBySlug } from "@/lib/media";
+import { clientGalleryWatermarked, projectPageWatermarked } from "@/lib/media-types";
 import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings-types";
 
 export const Route = createFileRoute("/projects/$slug")({
@@ -46,6 +47,11 @@ export const Route = createFileRoute("/projects/$slug")({
 function ProjectDetail() {
   const project = Route.useLoaderData();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const showWatermarks = projectPageWatermarked({
+    client_paid_at: project.clientPaid ? "paid" : null,
+    published: project.published,
+    public_watermarked: project.publicWatermarked,
+  });
   const items = project.images.map((photo) => ({
     src: photo.src,
     title: photo.title,
@@ -62,7 +68,7 @@ function ProjectDetail() {
             <MediaImage
               src={project.cover}
               alt={project.title}
-              watermarked={!project.clientPaid}
+              watermarked={showWatermarks}
               width={1920}
               height={900}
               className="h-full w-full object-cover opacity-50"
@@ -85,7 +91,7 @@ function ProjectDetail() {
               <EyeOff className="h-3.5 w-3.5" /> Client preview — not listed on the public site
             </p>
           )}
-          {!project.clientPaid && (
+          {!project.published && clientGalleryWatermarked({ client_paid_at: project.clientPaid ? "paid" : null }) && (
             <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-300">
               <Lock className="h-3.5 w-3.5" /> Preview gallery — watermarked until delivery
             </p>

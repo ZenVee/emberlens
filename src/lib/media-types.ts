@@ -45,6 +45,7 @@ export type DbProject = {
   cover_photo_id: string | null;
   published: boolean;
   client_paid_at: string | null;
+  public_watermarked: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -60,13 +61,33 @@ export type PublicProjectListItem = {
   description: string | null;
   cover: string;
   clientPaid: boolean;
+  publicWatermarked: boolean;
 };
 
 export type PublicProjectDetail = PublicProjectListItem & {
   clientPaid: boolean;
+  publicWatermarked: boolean;
   published: boolean;
   images: PublicPhoto[];
 };
+
+export function clientGalleryWatermarked(project: Pick<DbProject, "client_paid_at">): boolean {
+  return !project.client_paid_at;
+}
+
+export function publicGalleryWatermarked(
+  project: Pick<DbProject, "client_paid_at" | "public_watermarked">,
+): boolean {
+  if (!project.client_paid_at) return true;
+  return project.public_watermarked;
+}
+
+export function projectPageWatermarked(
+  project: Pick<DbProject, "client_paid_at" | "published" | "public_watermarked">,
+): boolean {
+  if (!project.published) return clientGalleryWatermarked(project);
+  return publicGalleryWatermarked(project);
+}
 
 export function photoUrlForProject(
   photo: Pick<DbPhoto, "cdn_url" | "watermarked_cdn_url">,

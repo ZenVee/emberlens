@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound, useParams } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Check, Copy, Eye, EyeOff, Trash2, Upload } from "lucide-react";
+import { ArrowLeft, Check, Copy, Eye, EyeOff, Lock, Trash2, Upload } from "lucide-react";
 import { useState, type ComponentType } from "react";
 
 import { useAdminPageMeta } from "@/components/admin-page-meta";
@@ -95,6 +95,7 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
         cover_photo_id: coverId || null,
         published: project.published,
         client_paid: Boolean(project.client_paid_at),
+        public_watermarked: project.public_watermarked,
       },
     });
 
@@ -269,16 +270,26 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
             />
             <ToggleRow
               label="Client paid"
-              description="Remove watermarks from the client gallery"
+              description="Remove watermarks from the client gallery link"
               checked={Boolean(project.client_paid_at)}
               onChange={(paid) =>
                 setProject({
                   ...project,
                   client_paid_at: paid ? new Date().toISOString() : null,
+                  public_watermarked: paid ? project.public_watermarked : false,
                 })
               }
               icon={Check}
             />
+            {project.client_paid_at && (
+              <ToggleRow
+                label="Watermarks on public page"
+                description="Show watermarked images when this project is published"
+                checked={project.public_watermarked}
+                onChange={(public_watermarked) => setProject({ ...project, public_watermarked })}
+                icon={Lock}
+              />
+            )}
           </div>
 
           <button

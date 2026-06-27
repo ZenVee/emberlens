@@ -5,6 +5,7 @@ import { PhotoCard } from "@/components/photo-card";
 import { MediaImage } from "@/components/media-image";
 import { heroImage } from "@/lib/mock-data";
 import { fetchFeaturedPhotos, fetchPublishedProjects } from "@/lib/media";
+import { publicGalleryWatermarked } from "@/lib/media-types";
 import { useSiteSettings } from "@/lib/site-settings-queries";
 import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings-types";
 
@@ -194,7 +195,10 @@ function Index() {
                     <MediaImage
                       src={pr.cover}
                       alt={pr.title}
-                      watermarked={!pr.clientPaid}
+                      watermarked={publicGalleryWatermarked({
+                        client_paid_at: pr.clientPaid ? "paid" : null,
+                        public_watermarked: pr.publicWatermarked,
+                      })}
                       loading="lazy"
                       width={800}
                       height={600}

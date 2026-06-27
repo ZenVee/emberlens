@@ -1,6 +1,7 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { MediaImage } from "@/components/media-image";
+import { publicGalleryWatermarked } from "@/lib/media-types";
 import { fetchPublishedProjects } from "@/lib/media";
 import { useSiteSettings } from "@/lib/site-settings-queries";
 import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings-types";
@@ -51,7 +52,10 @@ function ProjectsLayout() {
                   <MediaImage
                     src={pr.cover}
                     alt={pr.title}
-                    watermarked={!pr.clientPaid}
+                    watermarked={publicGalleryWatermarked({
+                      client_paid_at: pr.clientPaid ? "paid" : null,
+                      public_watermarked: pr.publicWatermarked,
+                    })}
                     loading="lazy"
                     width={800}
                     height={600}

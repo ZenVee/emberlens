@@ -82,6 +82,7 @@ create table public.projects (
   cover_photo_id uuid references public.photos (id) on delete set null,
   published boolean not null default false,
   client_paid_at timestamptz,
+  public_watermarked boolean not null default false,
   sort_order int not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

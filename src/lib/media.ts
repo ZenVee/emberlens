@@ -6,6 +6,8 @@ import {
   formatShootDate,
   PHOTO_CATEGORIES,
   photoUrlForProject,
+  projectPageWatermarked,
+  publicGalleryWatermarked,
   slugify,
   toPublicPhoto,
   type DbPhoto,
@@ -21,7 +23,7 @@ const PHOTO_SELECT =
   "id, title, category, fivemanage_id, cdn_url, watermarked_cdn_url, original_url, alt_text, sort_order, featured, published, created_at, updated_at";
 
 const PROJECT_SELECT =
-  "id, slug, title, client, shoot_date, category, description, cover_photo_id, published, client_paid_at, sort_order, created_at, updated_at";
+  "id, slug, title, client, shoot_date, category, description, cover_photo_id, published, client_paid_at, public_watermarked, sort_order, created_at, updated_at";
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
@@ -261,6 +263,7 @@ export const fetchPublishedProjects = createServerFn({ method: "GET" }).handler(
       description: project.description,
       cover: project.cover ? photoUrlForProject(project.cover, project) : "",
       clientPaid: Boolean(project.client_paid_at),
+      publicWatermarked: project.public_watermarked,
     }));
   },
 );
@@ -290,6 +293,8 @@ export const fetchProjectBySlug = createServerFn({ method: "GET" })
 
     if (linksError) throw linksError;
 
+    const showWatermarks = projectPageWatermarked(typedProject);
+
     const images: PublicPhoto[] = (
       links as { sort_order: number; photo: DbPhoto | null }[]
     )
@@ -301,7 +306,7 @@ export const fetchProjectBySlug = createServerFn({ method: "GET" })
         category: photo.category,
         src: photoUrlForProject(photo, typedProject),
         alt_text: photo.alt_text,
-        watermarked: !typedProject.client_paid_at,
+        watermarked: showWatermarks,
       }));
 
     const coverSrc = typedProject.cover
@@ -324,6 +329,7 @@ export const fetchProjectBySlug = createServerFn({ method: "GET" })
       description: typedProject.description,
       cover: coverSrc,
       clientPaid: Boolean(typedProject.client_paid_at),
+      publicWatermarked: typedProject.public_watermarked,
       published: typedProject.published,
       images,
     };
@@ -435,6 +441,7 @@ export const updateProject = createServerFn({ method: "POST" })
       cover_photo_id?: string | null;
       published?: boolean;
       client_paid?: boolean;
+      public_watermarked?: boolean;
       sort_order?: number;
     }) => data,
   )
@@ -456,6 +463,7 @@ export const updateProject = createServerFn({ method: "POST" })
     if (data.client_paid !== undefined) {
       patch.client_paid_at = data.client_paid ? new Date().toISOString() : null;
     }
+    if (data.public_watermarked !== undefined) patch.public_watermarked = data.public_watermarked;
 
     const { error } = await supabase.from("projects").update(patch).eq("id", data.id);
     if (error) return { error: error.message };
