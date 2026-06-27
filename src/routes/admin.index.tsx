@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { TrendingUp, ArrowUpRight } from "lucide-react";
-import { AdminShell } from "@/components/admin-shell";
+import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { stats, bookings, photos } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/admin/")({
@@ -9,8 +9,13 @@ export const Route = createFileRoute("/admin/")({
 });
 
 function Dashboard() {
+  useAdminPageMeta({
+    title: "Welcome back, Ember",
+    subtitle: "Here's what's happening in the studio this week.",
+  });
+
   return (
-    <AdminShell title="Welcome back, Ember" subtitle="Here's what's happening in the studio this week.">
+    <>
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="rounded-2xl border border-border/60 bg-card p-5 shadow-card">
@@ -76,7 +81,7 @@ function Dashboard() {
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => <span key={d}>{d}</span>)}
         </div>
       </section>
-    </AdminShell>
+    </>
   );
 }
 

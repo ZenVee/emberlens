@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Check, X, Mail } from "lucide-react";
-import { AdminShell } from "@/components/admin-shell";
+import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { bookings } from "@/lib/mock-data";
 import { StatusBadge } from "./admin.index";
 
@@ -10,8 +10,13 @@ export const Route = createFileRoute("/admin/bookings")({
 });
 
 function AdminBookings() {
+  useAdminPageMeta({
+    title: "Bookings",
+    subtitle: `${bookings.filter((b) => b.status === "Pending").length} pending requests`,
+  });
+
   return (
-    <AdminShell title="Bookings" subtitle={`${bookings.filter(b => b.status === "Pending").length} pending requests`}>
+    <>
       <div className="mb-6 flex flex-wrap gap-2">
         {["All", "Pending", "Confirmed", "Declined"].map((t, i) => (
           <button key={t} className={`rounded-full border px-4 py-1.5 text-sm ${i === 0 ? "border-ember bg-gradient-ember text-primary-foreground shadow-glow" : "border-border bg-card text-muted-foreground hover:text-foreground"}`}>
@@ -44,6 +49,6 @@ function AdminBookings() {
           </div>
         ))}
       </div>
-    </AdminShell>
+    </>
   );
 }

@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { fetchUser, type AuthUser } from "../lib/auth";
+import { authUserQueryKey } from "../lib/query-keys";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "../components/theme-provider";
 
@@ -73,8 +74,20 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient; user: AuthUser | null }>()({
-  beforeLoad: async () => {
-    const user = await fetchUser();
+  beforeLoad: async ({ context }) => {
+    const cached = context.queryClient.getQueryData<AuthUser | null>(authUserQueryKey);
+    if (cached !== undefined) {
+      void context.queryClient.prefetchQuery({
+        queryKey: authUserQueryKey,
+        queryFn: () => fetchUser(),
+      });
+      return { user: cached };
+    }
+
+    const user = await context.queryClient.ensureQueryData({
+      queryKey: authUserQueryKey,
+      queryFn: () => fetchUser(),
+    });
     return { user };
   },
   head: () => ({

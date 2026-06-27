@@ -1,8 +1,10 @@
 import { Link, useRouteContext, useRouter, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
+import { useQueryClient } from "@tanstack/react-query";
 import { Camera, LayoutDashboard, Images, FolderOpen, CalendarCheck, Settings, LogOut, Bell } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { prefetchAdminRoute } from "@/lib/admin-queries";
 import { signOut } from "@/lib/auth";
 
 import { ThemeToggle } from "./theme-toggle";
@@ -20,6 +22,7 @@ export function AdminShell({ title, subtitle, children }: { title: string; subti
   const [mobileOpen, setMobileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const router = useRouter();
+  const queryClient = useQueryClient();
   const signOutFn = useServerFn(signOut);
   const { user } = useRouteContext({ from: "__root__" });
 
@@ -61,6 +64,8 @@ export function AdminShell({ title, subtitle, children }: { title: string; subti
               <Link
                 key={n.to}
                 to={n.to}
+                preload="intent"
+                onMouseEnter={() => prefetchAdminRoute(queryClient, n.to)}
                 onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
                   active

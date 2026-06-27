@@ -1,4 +1,9 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useRouteContext, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
+
+import { AdminPageMetaProvider, useAdminPageMetaState } from "@/components/admin-page-meta";
+import { AdminShell } from "@/components/admin-shell";
+import { prefetchAdminDashboard } from "@/lib/admin-queries";
 
 export const Route = createFileRoute("/admin")({
   beforeLoad: ({ context, location }) => {
@@ -33,5 +38,33 @@ export const Route = createFileRoute("/admin")({
       throw redirect({ to: "/admin" });
     }
   },
-  component: () => <Outlet />,
+  component: AdminLayout,
 });
+
+function AdminLayout() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isBare = pathname === "/admin/login" || pathname === "/admin/onboarding";
+
+  if (isBare) return <Outlet />;
+
+  return (
+    <AdminPageMetaProvider>
+      <AdminLayoutShell />
+    </AdminPageMetaProvider>
+  );
+}
+
+function AdminLayoutShell() {
+  const meta = useAdminPageMetaState();
+  const { queryClient } = useRouteContext({ from: "__root__" });
+
+  useEffect(() => {
+    prefetchAdminDashboard(queryClient);
+  }, [queryClient]);
+
+  return (
+    <AdminShell title={meta.title} subtitle={meta.subtitle}>
+      <Outlet />
+    </AdminShell>
+  );
+}

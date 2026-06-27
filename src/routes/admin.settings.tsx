@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { AdminShell } from "@/components/admin-shell";
+import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/admin/settings")({
@@ -8,8 +8,10 @@ export const Route = createFileRoute("/admin/settings")({
 });
 
 function AdminSettings() {
+  useAdminPageMeta({ title: "Settings", subtitle: "Studio profile, appearance, and notifications." });
+
   return (
-    <AdminShell title="Settings" subtitle="Studio profile, appearance, and notifications.">
+    <>
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-card lg:col-span-2">
           <h2 className="font-display text-lg">Studio profile</h2>
@@ -54,7 +56,7 @@ function AdminSettings() {
           </div>
         </section>
       </div>
-    </AdminShell>
+    </>
   );
 }
 
