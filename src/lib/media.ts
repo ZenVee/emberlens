@@ -76,6 +76,39 @@ export const fetchAdminPhotos = createServerFn({ method: "GET" }).handler(async 
   return data as DbPhoto[];
 });
 
+async function linkPhotoToProject(
+  supabase: ReturnType<typeof getSupabaseServerClient>,
+  projectId: string,
+  photoId: string,
+) {
+  const { data: maxRow } = await supabase
+    .from("project_photos")
+    .select("sort_order")
+    .eq("project_id", projectId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { error: linkError } = await supabase.from("project_photos").insert({
+    project_id: projectId,
+    photo_id: photoId,
+    sort_order: (maxRow?.sort_order ?? -1) + 1,
+  });
+  if (linkError) return linkError.message;
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("cover_photo_id")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (project && !project.cover_photo_id) {
+    await supabase.from("projects").update({ cover_photo_id: photoId }).eq("id", projectId);
+  }
+
+  return null;
+}
+
 export const uploadPhoto = createServerFn({ method: "POST" })
   .validator(
     (data: {
@@ -84,6 +117,7 @@ export const uploadPhoto = createServerFn({ method: "POST" })
       filename: string;
       title: string;
       category: PhotoCategory;
+      projectId?: string;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -132,7 +166,18 @@ export const uploadPhoto = createServerFn({ method: "POST" })
       return { error: error.message, photo: null };
     }
 
-    return { error: null, photo: photo as DbPhoto };
+    const inserted = photo as DbPhoto;
+
+    if (data.projectId) {
+      const linkError = await linkPhotoToProject(supabase, data.projectId, inserted.id);
+      if (linkError) {
+        await supabase.from("photos").delete().eq("id", inserted.id);
+        await deleteFromFivemanage(cleanUpload.id).catch(() => undefined);
+        return { error: linkError, photo: null };
+      }
+    }
+
+    return { error: null, photo: inserted };
   });
 
 export const updatePhoto = createServerFn({ method: "POST" })
@@ -228,7 +273,6 @@ export const fetchProjectBySlug = createServerFn({ method: "GET" })
       .from("projects")
       .select(`${PROJECT_SELECT}, cover:photos!projects_cover_photo_id_fkey(cdn_url, watermarked_cdn_url)`)
       .eq("slug", data.slug)
-      .eq("published", true)
       .maybeSingle();
 
     if (error) throw error;
@@ -280,6 +324,7 @@ export const fetchProjectBySlug = createServerFn({ method: "GET" })
       description: typedProject.description,
       cover: coverSrc,
       clientPaid: Boolean(typedProject.client_paid_at),
+      published: typedProject.published,
       images,
     };
   });
@@ -329,10 +374,12 @@ export const fetchAdminProject = createServerFn({ method: "GET" })
 
     return {
       project: project as DbProject,
-      assignedPhotos: (links as { sort_order: number; photo_id: string; photo: DbPhoto }[]).map((link) => ({
-        sort_order: link.sort_order,
-        photo: link.photo,
-      })),
+      assignedPhotos: (links as { sort_order: number; photo_id: string; photo: DbPhoto | null }[])
+        .filter((link): link is { sort_order: number; photo_id: string; photo: DbPhoto } => link.photo !== null)
+        .map((link) => ({
+          sort_order: link.sort_order,
+          photo: link.photo,
+        })),
     };
   });
 

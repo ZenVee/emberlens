@@ -51,5 +51,10 @@ export function prefetchAdminRoute(queryClient: QueryClient, path: string) {
   }
   if (path.startsWith("/admin/projects")) {
     void queryClient.prefetchQuery(adminProjectsQueryOptions);
+    void queryClient.prefetchQuery(adminPhotosQueryOptions);
   }
+}
+
+export function prefetchAdminProject(queryClient: QueryClient, projectId: string) {
+  void queryClient.prefetchQuery(adminProjectQueryOptions(projectId));
 }

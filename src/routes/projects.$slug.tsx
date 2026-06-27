@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowLeft, Calendar, User2, Tag, Lock } from "lucide-react";
+import { ArrowLeft, Calendar, User2, Tag, Lock, EyeOff } from "lucide-react";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { PhotoCard } from "@/components/photo-card";
 import { Lightbox } from "@/components/lightbox";
@@ -11,13 +11,15 @@ import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings-types";
 export const Route = createFileRoute("/projects/$slug")({
   head: ({ loaderData, match }) => {
     const settings = match.context.settings ?? DEFAULT_SITE_SETTINGS;
-    return {
-      meta: [
-        { title: `${loaderData?.title ?? "Project"} — ${settings.studio_name}` },
-        { name: "description", content: loaderData?.description ?? `Project by ${settings.studio_name}.` },
-        { property: "og:image", content: loaderData?.cover ?? "" },
-      ],
-    };
+    const meta = [
+      { title: `${loaderData?.title ?? "Project"} — ${settings.studio_name}` },
+      { name: "description", content: loaderData?.description ?? `Project by ${settings.studio_name}.` },
+      { property: "og:image", content: loaderData?.cover ?? "" },
+    ];
+    if (loaderData && !loaderData.published) {
+      meta.push({ name: "robots", content: "noindex, nofollow" });
+    }
+    return { meta };
   },
   loader: async ({ params }) => {
     const project = await fetchProjectBySlug({ data: { slug: params.slug } });
@@ -78,6 +80,11 @@ function ProjectDetail() {
           <p className="mt-8 text-sm uppercase tracking-[0.2em] text-ember">{project.category}</p>
           <h1 className="mt-2 font-display text-4xl sm:text-6xl">{project.title}</h1>
           <p className="mt-5 max-w-2xl text-muted-foreground">{project.description}</p>
+          {!project.published && (
+            <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-border/60 bg-secondary/50 px-3 py-1 text-xs text-muted-foreground">
+              <EyeOff className="h-3.5 w-3.5" /> Client preview — not listed on the public site
+            </p>
+          )}
           {!project.clientPaid && (
             <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-300">
               <Lock className="h-3.5 w-3.5" /> Preview gallery — watermarked until delivery

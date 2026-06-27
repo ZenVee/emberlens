@@ -1,13 +1,21 @@
 import { createFileRoute, Link, notFound, useParams } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Check, Eye, EyeOff } from "lucide-react";
-import { useEffect, useState, type ComponentType } from "react";
+import { ArrowLeft, Check, Copy, Eye, EyeOff, Trash2, Upload } from "lucide-react";
+import { useState, type ComponentType } from "react";
 
 import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { AdminLoading } from "@/components/admin-loading";
-import { useAdminPhotos, useAdminProject } from "@/lib/admin-queries";
+import { PhotoUploadModal } from "@/components/photo-upload-modal";
+import { useAdminProject } from "@/lib/admin-queries";
 import { PHOTO_CATEGORIES, type DbPhoto, type DbProject, type PhotoCategory } from "@/lib/media-types";
-import { setProjectPhotos, updateProject } from "@/lib/media";
+import { setProjectPhotos, updateProject, uploadPhoto } from "@/lib/media";
+import { adminPhotosQueryKey } from "@/lib/query-keys";
+
+type AdminProjectData = {
+  project: DbProject;
+  assignedPhotos: { sort_order: number; photo: DbPhoto }[];
+};
 
 export const Route = createFileRoute("/admin/projects/$projectId")({
   head: () => ({ meta: [{ title: "Edit Project — Ember Lens Studio" }] }),
@@ -27,36 +35,9 @@ function ProjectNotFound() {
 function AdminProjectEdit() {
   const { projectId } = useParams({ from: "/admin/projects/$projectId" });
   const { data, isPending, isError } = useAdminProject(projectId);
-  const { data: libraryPhotos = [], isPending: libraryPending } = useAdminPhotos();
-
-  const [project, setProject] = useState<DbProject | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [coverId, setCoverId] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(false);
-
-  const updateFn = useServerFn(updateProject);
-  const setPhotosFn = useServerFn(setProjectPhotos);
-
-  useEffect(() => {
-    if (!data || initialized) return;
-    setProject(data.project);
-    setSelectedIds(data.assignedPhotos.map((item) => item.photo.id));
-    setCoverId(data.project.cover_photo_id ?? "");
-    setInitialized(true);
-  }, [data, initialized]);
-
-  useEffect(() => {
-    setInitialized(false);
-    setProject(null);
-    setSelectedIds([]);
-    setCoverId("");
-  }, [projectId]);
 
   useAdminPageMeta({
-    title: project?.title ?? "Edit project",
+    title: data?.project.title ?? "Edit project",
     subtitle: "Edit project details and photo set",
   });
 
@@ -64,7 +45,7 @@ function AdminProjectEdit() {
     throw notFound();
   }
 
-  if (isPending || !project || libraryPending) {
+  if (isPending || !data || data.project.id !== projectId) {
     return (
       <>
         <Link
@@ -77,6 +58,26 @@ function AdminProjectEdit() {
       </>
     );
   }
+
+  return <ProjectEditForm key={projectId} initial={data} />;
+}
+
+function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
+  const queryClient = useQueryClient();
+  const [project, setProject] = useState(initial.project);
+  const [photos, setPhotos] = useState<DbPhoto[]>(() =>
+    initial.assignedPhotos.map((item) => item.photo),
+  );
+  const [coverId, setCoverId] = useState(initial.project.cover_photo_id ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const updateFn = useServerFn(updateProject);
+  const setPhotosFn = useServerFn(setProjectPhotos);
+  const uploadFn = useServerFn(uploadPhoto);
 
   async function saveAll() {
     setSaving(true);
@@ -104,7 +105,7 @@ function AdminProjectEdit() {
     }
 
     const photosResult = await setPhotosFn({
-      data: { projectId: project.id, photoIds: selectedIds },
+      data: { projectId: project.id, photoIds: photos.map((photo) => photo.id) },
     });
 
     setSaving(false);
@@ -116,20 +117,17 @@ function AdminProjectEdit() {
     setMessage("Project saved.");
   }
 
-  function togglePhoto(id: string) {
-    setSelectedIds((prev) => {
-      if (prev.includes(id)) {
-        const next = prev.filter((pid) => pid !== id);
-        if (coverId === id) setCoverId(next[0] ?? "");
-        return next;
-      }
-      return [...prev, id];
+  function removePhoto(id: string) {
+    setPhotos((prev) => {
+      const next = prev.filter((photo) => photo.id !== id);
+      if (coverId === id) setCoverId(next[0]?.id ?? "");
+      return next;
     });
   }
 
   function movePhoto(id: string, direction: -1 | 1) {
-    setSelectedIds((prev) => {
-      const index = prev.indexOf(id);
+    setPhotos((prev) => {
+      const index = prev.findIndex((photo) => photo.id === id);
       if (index < 0) return prev;
       const target = index + direction;
       if (target < 0 || target >= prev.length) return prev;
@@ -137,6 +135,32 @@ function AdminProjectEdit() {
       [next[index], next[target]] = [next[target], next[index]];
       return next;
     });
+  }
+
+  const clientLink =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/projects/${project.slug}`
+      : `/projects/${project.slug}`;
+
+  async function copyClientLink() {
+    try {
+      await navigator.clipboard.writeText(clientLink);
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      setError("Could not copy link.");
+    }
+  }
+
+  function handlePhotosUploaded(uploaded: DbPhoto[]) {
+    setError(null);
+    queryClient.setQueryData(adminPhotosQueryKey, (prev: DbPhoto[] | undefined) => [
+      ...uploaded,
+      ...(prev ?? []),
+    ]);
+    setPhotos((prev) => [...prev, ...uploaded]);
+    if (!coverId && uploaded[0]) setCoverId(uploaded[0].id);
+    setMessage(`${uploaded.length} photo${uploaded.length === 1 ? "" : "s"} added to project.`);
   }
 
   return (
@@ -210,16 +234,42 @@ function AdminProjectEdit() {
           </div>
 
           <div className="mt-6 space-y-3 border-t border-border/60 pt-6">
+            <div className="rounded-xl border border-border/60 bg-background/50 px-4 py-3">
+              <p className="text-sm font-medium">Client link</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Share this with your client anytime. Unpublished projects are only visible via this link.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <code className="min-w-0 flex-1 truncate rounded-lg border border-border bg-background px-3 py-2 text-xs">
+                  {clientLink}
+                </code>
+                <button
+                  type="button"
+                  onClick={() => void copyClientLink()}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs hover:bg-secondary"
+                >
+                  {linkCopied ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-emerald-400" /> Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" /> Copy
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
             <ToggleRow
               label="Published"
-              description="Visible on the public site"
+              description="Show on the public projects page and homepage"
               checked={project.published}
               onChange={(published) => setProject({ ...project, published })}
               icon={project.published ? Eye : EyeOff}
             />
             <ToggleRow
               label="Client paid"
-              description="When off, project pages show watermarked images"
+              description="Remove watermarks from the client gallery"
               checked={Boolean(project.client_paid_at)}
               onChange={(paid) =>
                 setProject({
@@ -242,39 +292,48 @@ function AdminProjectEdit() {
         </section>
 
         <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-card">
-          <h2 className="font-display text-lg">Photos</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Select images from your library. Order controls the project gallery layout.
-          </p>
-
-          {libraryPhotos.length === 0 ? (
-            <p className="mt-6 text-sm text-muted-foreground">
-              Upload photos in the{" "}
-              <Link to="/admin/photos" className="text-ember hover:underline">
-                photo library
-              </Link>{" "}
-              first.
-            </p>
-          ) : (
-            <div className="mt-4 space-y-3">
-              {libraryPhotos.map((photo) => {
-                const selected = selectedIds.includes(photo.id);
-                const orderIndex = selectedIds.indexOf(photo.id);
-                return (
-                  <PhotoPickerRow
-                    key={photo.id}
-                    photo={photo}
-                    selected={selected}
-                    orderIndex={orderIndex}
-                    isCover={coverId === photo.id}
-                    onToggle={() => togglePhoto(photo.id)}
-                    onSetCover={() => setCoverId(photo.id)}
-                    onMoveUp={() => movePhoto(photo.id, -1)}
-                    onMoveDown={() => movePhoto(photo.id, 1)}
-                  />
-                );
-              })}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-display text-lg">Photos</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Upload images directly to this project gallery.
+              </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setUploadOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full bg-gradient-ember px-4 py-2 text-sm font-medium text-primary-foreground shadow-glow"
+            >
+              <Upload className="h-4 w-4" /> Upload photos
+            </button>
+          </div>
+
+          <PhotoUploadModal
+            open={uploadOpen}
+            onOpenChange={setUploadOpen}
+            onUpload={(payload) => uploadFn({ data: { ...payload, projectId: project.id } })}
+            onUploaded={handlePhotosUploaded}
+          />
+
+          {photos.length > 0 ? (
+            <div className="mt-6 space-y-3">
+              {photos.map((photo, index) => (
+                <ProjectPhotoRow
+                  key={photo.id}
+                  photo={photo}
+                  orderIndex={index}
+                  isCover={coverId === photo.id}
+                  onRemove={() => removePhoto(photo.id)}
+                  onSetCover={() => setCoverId(photo.id)}
+                  onMoveUp={() => movePhoto(photo.id, -1)}
+                  onMoveDown={() => movePhoto(photo.id, 1)}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="mt-6 text-sm text-muted-foreground">
+              No photos yet. Upload images to build this gallery.
+            </p>
           )}
         </section>
       </div>
@@ -336,53 +395,54 @@ function ToggleRow({
   );
 }
 
-function PhotoPickerRow({
+function ProjectPhotoRow({
   photo,
-  selected,
   orderIndex,
   isCover,
-  onToggle,
+  onRemove,
   onSetCover,
   onMoveUp,
   onMoveDown,
 }: {
   photo: DbPhoto;
-  selected: boolean;
   orderIndex: number;
   isCover: boolean;
-  onToggle: () => void;
+  onRemove: () => void;
   onSetCover: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) {
   return (
-    <div
-      className={`flex items-center gap-3 rounded-xl border px-3 py-2 ${selected ? "border-ember/50 bg-ember/5" : "border-border/60"}`}
-    >
-      <input type="checkbox" checked={selected} onChange={onToggle} className="h-4 w-4 accent-ember" />
+    <div className="flex items-center gap-3 rounded-xl border border-ember/50 bg-ember/5 px-3 py-2">
       <img src={photo.cdn_url} alt="" className="h-12 w-12 rounded-lg object-cover" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">{photo.title}</p>
         <p className="text-xs text-muted-foreground">{photo.category}</p>
       </div>
-      {selected && (
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-muted-foreground">#{orderIndex + 1}</span>
-          <button type="button" onClick={onMoveUp} className="rounded px-1 text-xs hover:bg-secondary">
-            ↑
-          </button>
-          <button type="button" onClick={onMoveDown} className="rounded px-1 text-xs hover:bg-secondary">
-            ↓
-          </button>
-          <button
-            type="button"
-            onClick={onSetCover}
-            className={`rounded-full px-2 py-0.5 text-xs ${isCover ? "bg-ember text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
-          >
-            Cover
-          </button>
-        </div>
-      )}
+      <div className="flex items-center gap-1">
+        <span className="text-xs text-muted-foreground">#{orderIndex + 1}</span>
+        <button type="button" onClick={onMoveUp} className="rounded px-1 text-xs hover:bg-secondary">
+          ↑
+        </button>
+        <button type="button" onClick={onMoveDown} className="rounded px-1 text-xs hover:bg-secondary">
+          ↓
+        </button>
+        <button
+          type="button"
+          onClick={onSetCover}
+          className={`rounded-full px-2 py-0.5 text-xs ${isCover ? "bg-ember text-primary-foreground" : "bg-secondary text-muted-foreground"}`}
+        >
+          Cover
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-destructive"
+          aria-label="Remove from project"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
   );
 }

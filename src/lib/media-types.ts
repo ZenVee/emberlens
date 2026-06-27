@@ -64,6 +64,7 @@ export type PublicProjectListItem = {
 
 export type PublicProjectDetail = PublicProjectListItem & {
   clientPaid: boolean;
+  published: boolean;
   images: PublicPhoto[];
 };
 

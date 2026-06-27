@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Plus, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { AdminLoading } from "@/components/admin-loading";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { useAdminProjects } from "@/lib/admin-queries";
+import { prefetchAdminProject, useAdminProjects } from "@/lib/admin-queries";
 import { PHOTO_CATEGORIES, formatShootDate, type PhotoCategory } from "@/lib/media-types";
 import { createProject, deleteProject, updateProject } from "@/lib/media";
 import { adminProjectsQueryKey } from "@/lib/query-keys";
@@ -18,6 +18,12 @@ export const Route = createFileRoute("/admin/projects")({
 });
 
 function AdminProjects() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  if (pathname !== "/admin/projects") return <Outlet />;
+  return <AdminProjectsList />;
+}
+
+function AdminProjectsList() {
   const { data: projects = [], isPending, isError, error: loadError } = useAdminProjects();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
@@ -173,6 +179,8 @@ function AdminProjects() {
                   <Link
                     to="/admin/projects/$projectId"
                     params={{ projectId: pr.id }}
+                    preload="intent"
+                    onMouseEnter={() => prefetchAdminProject(queryClient, pr.id)}
                     className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-background py-2 text-xs hover:bg-secondary"
                   >
                     <Pencil className="h-3.5 w-3.5" /> Edit

@@ -103,10 +103,18 @@ alter table public.photos enable row level security;
 alter table public.projects enable row level security;
 alter table public.project_photos enable row level security;
 
-create policy "Public can view published photos"
+create policy "Public can view published photos or project photos"
   on public.photos
   for select
-  using (published = true or public.is_admin());
+  using (
+    published = true
+    or public.is_admin()
+    or exists (
+      select 1
+      from public.project_photos pp
+      where pp.photo_id = id
+    )
+  );
 
 create policy "Admins manage photos"
   on public.photos
@@ -114,10 +122,10 @@ create policy "Admins manage photos"
   using (public.is_admin())
   with check (public.is_admin());
 
-create policy "Public can view published projects"
+create policy "Public can view projects"
   on public.projects
   for select
-  using (published = true or public.is_admin());
+  using (true);
 
 create policy "Admins manage projects"
   on public.projects
@@ -125,18 +133,10 @@ create policy "Admins manage projects"
   using (public.is_admin())
   with check (public.is_admin());
 
-create policy "Public can view photos in published projects"
+create policy "Public can view project photos"
   on public.project_photos
   for select
-  using (
-    public.is_admin()
-    or exists (
-      select 1
-      from public.projects p
-      where p.id = project_id
-        and p.published = true
-    )
-  );
+  using (true);
 
 create policy "Admins manage project photos"
   on public.project_photos
