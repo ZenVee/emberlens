@@ -6,7 +6,7 @@ import { AppSelect } from "@/components/app-select";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { PhotoCard } from "@/components/photo-card";
 import { MediaImage } from "@/components/media-image";
-import { heroImage } from "@/lib/mock-data";
+import { PLACEHOLDER_IMAGE } from "@/lib/placeholder-image";
 import { fetchFeaturedPhotos, fetchPublishedProjects } from "@/lib/media";
 import { publicGalleryWatermarked } from "@/lib/media-types";
 import { useSiteSettings } from "@/lib/site-settings-queries";
@@ -43,7 +43,7 @@ function Index() {
   const settings = useSiteSettings();
   const { featuredPhotos, recentProjects } = Route.useLoaderData();
   const [sessionType, setSessionType] = useState(SESSION_OPTIONS[0].value);
-  const heroSrc = settings.hero_image_url ?? heroImage;
+  const heroSrc = settings.hero_image_url ?? PLACEHOLDER_IMAGE;
 
   return (
     <div className="min-h-screen bg-background">
@@ -202,20 +202,18 @@ function Index() {
                 className="group overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card transition-all hover:-translate-y-1 hover:shadow-glow"
               >
                 <div className="aspect-[4/3] overflow-hidden bg-secondary">
-                  {pr.cover ? (
-                    <MediaImage
-                      src={pr.cover}
-                      alt={pr.title}
-                      watermarked={publicGalleryWatermarked({
-                        client_paid_at: pr.clientPaid ? "paid" : null,
-                        public_watermarked: pr.publicWatermarked,
-                      })}
-                      loading="lazy"
-                      width={800}
-                      height={600}
-                      className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
-                  ) : null}
+                  <MediaImage
+                    src={pr.cover || PLACEHOLDER_IMAGE}
+                    alt={pr.title}
+                    watermarked={Boolean(pr.cover) && publicGalleryWatermarked({
+                      client_paid_at: pr.clientPaid ? "paid" : null,
+                      public_watermarked: pr.publicWatermarked,
+                    })}
+                    loading="lazy"
+                    width={800}
+                    height={600}
+                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
                 </div>
                 <div className="p-5">
                   <p className="text-xs uppercase tracking-wide text-ember">{pr.category}</p>

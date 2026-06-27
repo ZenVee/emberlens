@@ -1,8 +1,9 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { MediaImage } from "@/components/media-image";
-import { publicGalleryWatermarked } from "@/lib/media-types";
+import { PLACEHOLDER_IMAGE } from "@/lib/placeholder-image";
 import { fetchPublishedProjects } from "@/lib/media";
+import { publicGalleryWatermarked } from "@/lib/media-types";
 import { useSiteSettings } from "@/lib/site-settings-queries";
 import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings-types";
 
@@ -48,20 +49,18 @@ function ProjectsLayout() {
               className="group overflow-hidden rounded-2xl border border-border/60 bg-card shadow-card transition-all hover:-translate-y-1 hover:border-ember/60 hover:shadow-glow"
             >
               <div className="aspect-[4/3] overflow-hidden bg-secondary">
-                {pr.cover ? (
-                  <MediaImage
-                    src={pr.cover}
-                    alt={pr.title}
-                    watermarked={publicGalleryWatermarked({
-                      client_paid_at: pr.clientPaid ? "paid" : null,
-                      public_watermarked: pr.publicWatermarked,
-                    })}
-                    loading="lazy"
-                    width={800}
-                    height={600}
-                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                  />
-                ) : null}
+                <MediaImage
+                  src={pr.cover || PLACEHOLDER_IMAGE}
+                  alt={pr.title}
+                  watermarked={Boolean(pr.cover) && publicGalleryWatermarked({
+                    client_paid_at: pr.clientPaid ? "paid" : null,
+                    public_watermarked: pr.publicWatermarked,
+                  })}
+                  loading="lazy"
+                  width={800}
+                  height={600}
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
               </div>
               <div className="p-5">
                 <div className="flex items-center justify-between text-xs">
