@@ -2,19 +2,25 @@ import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-r
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { MediaImage } from "@/components/media-image";
 import { fetchPublishedProjects } from "@/lib/media";
+import { useSiteSettings } from "@/lib/site-settings-queries";
+import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings-types";
 
 export const Route = createFileRoute("/projects")({
-  head: () => ({
-    meta: [
-      { title: "Projects — Ember Lens" },
-      { name: "description", content: "Selected projects from Ember Lens — Los Santos cinematic photography." },
-    ],
-  }),
+  head: ({ match }) => {
+    const settings = match.context.settings ?? DEFAULT_SITE_SETTINGS;
+    return {
+      meta: [
+        { title: `${settings.projects_title} — ${settings.studio_name}` },
+        { name: "description", content: settings.projects_description },
+      ],
+    };
+  },
   loader: () => fetchPublishedProjects(),
   component: ProjectsLayout,
 });
 
 function ProjectsLayout() {
+  const settings = useSiteSettings();
   const projects = Route.useLoaderData();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   if (pathname !== "/projects") return <Outlet />;
@@ -23,11 +29,9 @@ function ProjectsLayout() {
     <div className="min-h-screen bg-background">
       <SiteNav />
       <section className="mx-auto max-w-7xl px-4 pt-14 pb-10 sm:px-6">
-        <p className="text-sm uppercase tracking-[0.2em] text-ember">Projects</p>
-        <h1 className="mt-2 font-display text-4xl sm:text-5xl">Selected work</h1>
-        <p className="mt-3 max-w-xl text-muted-foreground">
-          A curated set of recent projects across portraits, automotive, events, and editorial.
-        </p>
+        <p className="text-sm uppercase tracking-[0.2em] text-ember">{settings.projects_eyebrow}</p>
+        <h1 className="mt-2 font-display text-4xl sm:text-5xl">{settings.projects_title}</h1>
+        <p className="mt-3 max-w-xl text-muted-foreground">{settings.projects_description}</p>
       </section>
       <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-24 sm:grid-cols-2 sm:px-6 lg:grid-cols-3">
         {projects.length === 0 ? (

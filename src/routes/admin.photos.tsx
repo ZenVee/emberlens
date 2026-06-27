@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 
 import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { AdminLoading } from "@/components/admin-loading";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PhotoUploadModal } from "@/components/photo-upload-modal";
 import { useAdminPhotos } from "@/lib/admin-queries";
 import { PHOTO_CATEGORIES, type DbPhoto, type PhotoCategory } from "@/lib/media-types";
@@ -25,6 +26,8 @@ function AdminPhotos() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<DbPhoto | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DbPhoto | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const uploadFn = useServerFn(uploadPhoto);
   const updateFn = useServerFn(updatePhoto);
@@ -66,14 +69,18 @@ function AdminPhotos() {
     );
   }
 
-  async function handleDelete(photo: DbPhoto) {
-    if (!confirm(`Delete "${photo.title}"?`)) return;
-    const result = await deleteFn({ data: { id: photo.id } });
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setError(null);
+    const result = await deleteFn({ data: { id: deleteTarget.id } });
+    setDeleting(false);
     if (result.error) {
       setError(result.error);
       return;
     }
-    updatePhotos((prev) => prev.filter((p) => p.id !== photo.id));
+    updatePhotos((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+    setDeleteTarget(null);
   }
 
   async function saveEdit() {
@@ -136,6 +143,23 @@ function AdminPhotos() {
         }}
       />
 
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteTarget(null);
+        }}
+        title="Delete photo"
+        description={
+          deleteTarget
+            ? `Delete "${deleteTarget.title}"? This cannot be undone.`
+            : "Delete this photo? This cannot be undone."
+        }
+        confirmLabel="Delete"
+        destructive
+        loading={deleting}
+        onConfirm={confirmDelete}
+      />
+
       {error && (
         <p className="mb-4 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error}
@@ -161,7 +185,7 @@ function AdminPhotos() {
               key={p.id}
               photo={p}
               onEdit={() => setEditing(p)}
-              onDelete={() => void handleDelete(p)}
+              onDelete={() => setDeleteTarget(p)}
               onTogglePublished={() => void togglePublished(p)}
               onToggleFeatured={() => void toggleFeatured(p)}
             />
@@ -200,7 +224,7 @@ function AdminPhotos() {
                   <td className="px-4 py-2.5 text-right">
                     <PhotoActions
                       onEdit={() => setEditing(p)}
-                      onDelete={() => void handleDelete(p)}
+                      onDelete={() => setDeleteTarget(p)}
                       onTogglePublished={() => void togglePublished(p)}
                       onToggleFeatured={() => void toggleFeatured(p)}
                     />

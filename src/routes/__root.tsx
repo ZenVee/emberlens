@@ -11,9 +11,20 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { fetchUser, type AuthUser } from "../lib/auth";
-import { authUserQueryKey } from "../lib/query-keys";
+import { authUserQueryKey, siteSettingsQueryKey } from "../lib/query-keys";
+import { DEFAULT_SITE_SETTINGS, type SiteSettings } from "../lib/site-settings-types";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "../components/theme-provider";
+
+async function fetchUserQuery() {
+  const { fetchUser: fetchUserFn } = await import("../lib/auth");
+  return fetchUserFn();
+}
+
+async function fetchSiteSettingsQuery() {
+  const { fetchSiteSettings } = await import("../lib/site-settings");
+  return fetchSiteSettings();
+}
 
 function NotFoundComponent() {
   return (
@@ -73,22 +84,32 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient; user: AuthUser | null }>()({
+export const Route = createRootRouteWithContext<{
+  queryClient: QueryClient;
+  user: AuthUser | null;
+  settings: SiteSettings;
+}>()({
   beforeLoad: async ({ context }) => {
-    const cached = context.queryClient.getQueryData<AuthUser | null>(authUserQueryKey);
-    if (cached !== undefined) {
-      void context.queryClient.prefetchQuery({
-        queryKey: authUserQueryKey,
-        queryFn: () => fetchUser(),
-      });
-      return { user: cached };
-    }
+    const cachedUser = context.queryClient.getQueryData<AuthUser | null>(authUserQueryKey);
+    const userPromise =
+      cachedUser !== undefined
+        ? (void context.queryClient.prefetchQuery({
+            queryKey: authUserQueryKey,
+            queryFn: fetchUserQuery,
+          }),
+          Promise.resolve(cachedUser))
+        : context.queryClient.ensureQueryData({
+            queryKey: authUserQueryKey,
+            queryFn: fetchUserQuery,
+          });
 
-    const user = await context.queryClient.ensureQueryData({
-      queryKey: authUserQueryKey,
-      queryFn: () => fetchUser(),
+    const settingsPromise = context.queryClient.ensureQueryData({
+      queryKey: siteSettingsQueryKey,
+      queryFn: fetchSiteSettingsQuery,
     });
-    return { user };
+
+    const [user, settings] = await Promise.all([userPromise, settingsPromise]);
+    return { user, settings };
   },
   head: () => ({
     meta: [

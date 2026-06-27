@@ -6,15 +6,19 @@ import { PhotoCard } from "@/components/photo-card";
 import { Lightbox } from "@/components/lightbox";
 import { MediaImage } from "@/components/media-image";
 import { fetchProjectBySlug } from "@/lib/media";
+import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings-types";
 
 export const Route = createFileRoute("/projects/$slug")({
-  head: ({ loaderData }) => ({
-    meta: [
-      { title: `${loaderData?.title ?? "Project"} — Ember Lens` },
-      { name: "description", content: loaderData?.description ?? "Project by Ember Lens." },
-      { property: "og:image", content: loaderData?.cover ?? "" },
-    ],
-  }),
+  head: ({ loaderData, match }) => {
+    const settings = match.context.settings ?? DEFAULT_SITE_SETTINGS;
+    return {
+      meta: [
+        { title: `${loaderData?.title ?? "Project"} — ${settings.studio_name}` },
+        { name: "description", content: loaderData?.description ?? `Project by ${settings.studio_name}.` },
+        { property: "og:image", content: loaderData?.cover ?? "" },
+      ],
+    };
+  },
   loader: async ({ params }) => {
     const project = await fetchProjectBySlug({ data: { slug: params.slug } });
     if (!project) throw notFound();

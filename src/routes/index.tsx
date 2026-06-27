@@ -3,16 +3,21 @@ import { ArrowRight, Camera, Sparkles, MapPin, Mail } from "lucide-react";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { PhotoCard } from "@/components/photo-card";
 import { MediaImage } from "@/components/media-image";
-import { heroImage, services } from "@/lib/mock-data";
+import { heroImage } from "@/lib/mock-data";
 import { fetchFeaturedPhotos, fetchPublishedProjects } from "@/lib/media";
+import { useSiteSettings } from "@/lib/site-settings-queries";
+import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings-types";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "Ember Lens — Capturing Los Santos, one frame at a time" },
-      { name: "description", content: "Cinematic photography for Los Santos — portraits, events, automotive, lifestyle." },
-    ],
-  }),
+  head: ({ match }) => {
+    const settings = match.context.settings ?? DEFAULT_SITE_SETTINGS;
+    return {
+      meta: [
+        { title: `${settings.studio_name} — ${settings.tagline}` },
+        { name: "description", content: settings.bio || settings.hero_text },
+      ],
+    };
+  },
   loader: async () => {
     const [featuredPhotos, recentProjects] = await Promise.all([
       fetchFeaturedPhotos(),
@@ -24,7 +29,10 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const settings = useSiteSettings();
   const { featuredPhotos, recentProjects } = Route.useLoaderData();
+  const heroSrc = settings.hero_image_url ?? heroImage;
+
   return (
     <div className="min-h-screen bg-background">
       <SiteNav />
@@ -33,8 +41,8 @@ function Index() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
           <img
-            src={heroImage}
-            alt="Los Santos at night"
+            src={heroSrc}
+            alt=""
             width={1920}
             height={1080}
             className="h-full w-full object-cover opacity-60"
@@ -44,16 +52,12 @@ function Index() {
         <div className="relative mx-auto flex max-w-7xl flex-col items-center px-4 pt-24 pb-32 text-center sm:px-6 md:pt-36 md:pb-44">
           <span className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/80 bg-background/60 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur">
             <Sparkles className="h-3.5 w-3.5 text-ember" />
-            Now booking summer sessions in Los Santos
+            {settings.tagline}
           </span>
           <h1 className="max-w-4xl font-display text-5xl leading-[1.05] sm:text-6xl md:text-7xl">
-            Capturing Los Santos,
-            <br />
-            <span className="text-gradient-ember italic">one frame at a time.</span>
+            {settings.hero_title}
           </h1>
-          <p className="mt-6 max-w-xl text-base text-muted-foreground sm:text-lg">
-            Ember Lens is a cinematic photography studio for the streets, skies, and people of Los Santos. Cozy, warm, and a little bit nocturnal.
-          </p>
+          <p className="mt-6 max-w-xl text-base text-muted-foreground sm:text-lg">{settings.hero_text}</p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/projects"
@@ -116,27 +120,25 @@ function Index() {
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
         <div className="grid items-center gap-12 rounded-3xl border border-border/60 bg-gradient-night p-8 shadow-card md:grid-cols-2 md:p-14">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-ember">About the studio</p>
+            <p className="text-sm uppercase tracking-[0.2em] text-ember">About {settings.studio_name}</p>
             <h2 className="mt-2 font-display text-3xl sm:text-4xl">A cozy lens on a loud city.</h2>
-            <p className="mt-5 text-muted-foreground">
-              Ember Lens is a one-person studio based off Vinewood Boulevard. We work mostly after the sun goes down — soft neon, long shutters, and warm tones. Whether it's a portrait, a custom build, or a residency on the strip, we bring the city's mood with us.
-            </p>
+            <p className="mt-5 text-muted-foreground">{settings.bio}</p>
             <ul className="mt-6 space-y-3 text-sm">
               <li className="flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full bg-secondary text-ember"><Camera className="h-3.5 w-3.5" /></span>Cinematic color grading, every delivery</li>
               <li className="flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full bg-secondary text-ember"><Sparkles className="h-3.5 w-3.5" /></span>24-hour preview turnaround</li>
-              <li className="flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full bg-secondary text-ember"><MapPin className="h-3.5 w-3.5" /></span>On-location anywhere in Los Santos & Blaine County</li>
+              <li className="flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full bg-secondary text-ember"><MapPin className="h-3.5 w-3.5" /></span>{settings.location}</li>
             </ul>
           </div>
           <div className="grid grid-cols-2 gap-4">
             {featuredPhotos[0] ? (
               <img src={featuredPhotos[0].src} alt="" loading="lazy" width={600} height={800} className="aspect-[3/4] w-full rounded-2xl object-cover shadow-card" />
             ) : (
-              <img src={heroImage} alt="" loading="lazy" width={600} height={800} className="aspect-[3/4] w-full rounded-2xl object-cover shadow-card" />
+              <img src={heroSrc} alt="" loading="lazy" width={600} height={800} className="aspect-[3/4] w-full rounded-2xl object-cover shadow-card" />
             )}
             {featuredPhotos[1] ? (
               <img src={featuredPhotos[1].src} alt="" loading="lazy" width={600} height={600} className="mt-8 aspect-square w-full rounded-2xl object-cover shadow-card" />
             ) : (
-              <img src={heroImage} alt="" loading="lazy" width={600} height={600} className="mt-8 aspect-square w-full rounded-2xl object-cover shadow-card" />
+              <img src={heroSrc} alt="" loading="lazy" width={600} height={600} className="mt-8 aspect-square w-full rounded-2xl object-cover shadow-card" />
             )}
           </div>
         </div>
@@ -145,11 +147,11 @@ function Index() {
       {/* SERVICES */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
         <div className="mb-10 text-center">
-          <p className="text-sm uppercase tracking-[0.2em] text-ember">Services</p>
-          <h2 className="mt-2 font-display text-3xl sm:text-4xl">What we shoot</h2>
+          <p className="text-sm uppercase tracking-[0.2em] text-ember">{settings.services_eyebrow}</p>
+          <h2 className="mt-2 font-display text-3xl sm:text-4xl">{settings.services_title}</h2>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {services.map((s) => (
+          {settings.services.map((s) => (
             <div
               key={s.title}
               className="group relative overflow-hidden rounded-2xl border border-border/60 bg-card p-6 shadow-card transition-all hover:-translate-y-1 hover:border-ember/60 hover:shadow-glow"
@@ -169,8 +171,8 @@ function Index() {
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
         <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-ember">Projects</p>
-            <h2 className="mt-2 font-display text-3xl sm:text-4xl">Recent work</h2>
+            <p className="text-sm uppercase tracking-[0.2em] text-ember">{settings.projects_eyebrow}</p>
+            <h2 className="mt-2 font-display text-3xl sm:text-4xl">{settings.projects_title}</h2>
           </div>
           <Link to="/projects" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             All projects <ArrowRight className="h-4 w-4" />

@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { AdminLoading } from "@/components/admin-loading";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { useAdminProjects } from "@/lib/admin-queries";
 import { PHOTO_CATEGORIES, formatShootDate, type PhotoCategory } from "@/lib/media-types";
 import { createProject, deleteProject, updateProject } from "@/lib/media";
@@ -22,6 +23,8 @@ function AdminProjects() {
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     title: "",
     client: "",
@@ -75,14 +78,18 @@ function AdminProjects() {
     updateProjects((prev) => prev.map((p) => (p.id === id ? { ...p, published: !published } : p)));
   }
 
-  async function handleDelete(id: string, title: string) {
-    if (!confirm(`Delete project "${title}"?`)) return;
-    const result = await deleteFn({ data: { id } });
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setError(null);
+    const result = await deleteFn({ data: { id: deleteTarget.id } });
+    setDeleting(false);
     if (result.error) {
       setError(result.error);
       return;
     }
-    updateProjects((prev) => prev.filter((p) => p.id !== id));
+    updateProjects((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+    setDeleteTarget(null);
   }
 
   return (
@@ -180,7 +187,7 @@ function AdminProjects() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => void handleDelete(pr.id, pr.title)}
+                    onClick={() => setDeleteTarget({ id: pr.id, title: pr.title })}
                     className="grid h-9 w-9 place-items-center rounded-full border border-border text-muted-foreground hover:border-destructive hover:text-destructive"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -191,6 +198,23 @@ function AdminProjects() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteTarget(null);
+        }}
+        title="Delete project"
+        description={
+          deleteTarget
+            ? `Delete "${deleteTarget.title}"? This cannot be undone.`
+            : "Delete this project? This cannot be undone."
+        }
+        confirmLabel="Delete"
+        destructive
+        loading={deleting}
+        onConfirm={confirmDelete}
+      />
 
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">

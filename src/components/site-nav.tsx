@@ -1,6 +1,8 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Camera, Menu, X } from "lucide-react";
 import { useState } from "react";
+
+import { linesFromMultiline, studioBrandParts, useSiteSettings } from "@/lib/site-settings-queries";
 import { ThemeToggle } from "./theme-toggle";
 
 const links = [
@@ -11,6 +13,8 @@ const links = [
 ];
 
 export function SiteNav() {
+  const settings = useSiteSettings();
+  const { lead, accent } = studioBrandParts(settings.studio_name);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [open, setOpen] = useState(false);
 
@@ -22,7 +26,13 @@ export function SiteNav() {
             <Camera className="h-4 w-4 text-primary-foreground" />
           </span>
           <span className="font-display text-xl tracking-tight">
-            Ember <span className="text-gradient-ember">Lens</span>
+            {lead}
+            {accent ? (
+              <>
+                {" "}
+                <span className="text-gradient-ember">{accent}</span>
+              </>
+            ) : null}
           </span>
         </Link>
 
@@ -82,6 +92,11 @@ export function SiteNav() {
 }
 
 export function SiteFooter() {
+  const settings = useSiteSettings();
+  const { lead, accent } = studioBrandParts(settings.studio_name);
+  const studioLines = linesFromMultiline(settings.footer_studio_body);
+  const contactLines = linesFromMultiline(settings.footer_contact_body);
+
   return (
     <footer className="mt-24 border-t border-border/60 bg-background/60">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-3">
@@ -91,25 +106,32 @@ export function SiteFooter() {
               <Camera className="h-3.5 w-3.5 text-primary-foreground" />
             </span>
             <span className="font-display text-lg">
-              Ember <span className="text-gradient-ember">Lens</span>
+              {lead}
+              {accent ? (
+                <>
+                  {" "}
+                  <span className="text-gradient-ember">{accent}</span>
+                </>
+              ) : null}
             </span>
           </div>
-          <p className="mt-3 max-w-xs text-sm text-muted-foreground">
-            Capturing Los Santos, one frame at a time.
-          </p>
+          <p className="mt-3 max-w-xs text-sm text-muted-foreground">{settings.footer_tagline}</p>
         </div>
         <div className="text-sm text-muted-foreground">
-          <p className="mb-2 font-medium text-foreground">Studio</p>
-          <p>Vinewood Blvd, Los Santos</p>
-          <p>Open by appointment</p>
+          <p className="mb-2 font-medium text-foreground">{settings.footer_studio_heading}</p>
+          {studioLines.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
         </div>
         <div className="text-sm text-muted-foreground">
-          <p className="mb-2 font-medium text-foreground">Contact</p>
-          <p>@emberlens / RP-only studio</p>
+          <p className="mb-2 font-medium text-foreground">{settings.footer_contact_heading}</p>
+          {contactLines.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
         </div>
       </div>
       <div className="border-t border-border/60 py-5 text-center text-xs text-muted-foreground">
-        © 2026 Ember Lens — A fictional studio for GTA V roleplay. Not affiliated with Rockstar Games.
+        {settings.footer_copyright}
       </div>
     </footer>
   );

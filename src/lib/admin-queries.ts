@@ -1,11 +1,8 @@
 import { queryOptions, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { fetchAdminPhotos, fetchAdminProject, fetchAdminProjects } from "./media";
-import {
-  adminPhotosQueryKey,
-  adminProjectQueryKey,
-  adminProjectsQueryKey,
-} from "./query-keys";
+import { adminPhotosQueryKey, adminProjectQueryKey, adminProjectsQueryKey } from "./query-keys";
+import { siteSettingsQueryOptions } from "./site-settings-queries";
 
 export const adminPhotosQueryOptions = queryOptions({
   queryKey: adminPhotosQueryKey,
@@ -34,6 +31,12 @@ export function useAdminProjects() {
 
 export function useAdminProject(projectId: string) {
   return useQuery(adminProjectQueryOptions(projectId));
+}
+
+export const adminSiteSettingsQueryOptions = queryOptions(siteSettingsQueryOptions);
+
+export function useAdminSiteSettings() {
+  return useQuery(adminSiteSettingsQueryOptions);
 }
 
 export function prefetchAdminDashboard(queryClient: QueryClient) {
