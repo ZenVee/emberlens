@@ -12,25 +12,26 @@ type Props = {
 export function PhotoCard({ src, title, subtitle, onClick, aspect = "square", watermarked }: Props) {
   const aspectCls =
     aspect === "portrait" ? "aspect-[3/4]" : aspect === "landscape" ? "aspect-[4/3]" : "aspect-square";
+
   return (
-    <button
-      onClick={onClick}
+    <div
       className={`group relative overflow-hidden rounded-2xl bg-card shadow-card transition-all duration-500 hover:-translate-y-1 hover:shadow-glow ${aspectCls}`}
     >
       <MediaImage
         src={src}
         alt={title}
         watermarked={watermarked}
+        onClick={onClick}
         loading="lazy"
         width={800}
         height={800}
-        className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+        className="h-full w-full cursor-zoom-in object-cover transition-transform duration-700 group-hover:scale-105"
       />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/0 to-black/0 opacity-90" />
-      <div className="absolute inset-x-0 bottom-0 p-4 text-left">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4 text-left">
         <p className="font-display text-base text-white">{title}</p>
         {subtitle && <p className="text-xs text-white/70">{subtitle}</p>}
       </div>
-    </button>
+    </div>
   );
 }

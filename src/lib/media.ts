@@ -18,6 +18,7 @@ import {
   type PublicProjectListItem,
 } from "./media-types";
 import { getSupabaseServerClient } from "./supabase";
+import { uploadWatermarkedToFivemanage } from "./watermark-image";
 
 const PHOTO_SELECT =
   "id, title, category, fivemanage_id, cdn_url, watermarked_cdn_url, original_url, alt_text, sort_order, featured, published, created_at, updated_at";
@@ -145,9 +146,19 @@ export const uploadPhoto = createServerFn({ method: "POST" })
     const cleanUpload = await uploadToFivemanage(buffer, {
       filename: `${baseName}.${ext}`,
       mimeType: data.mimeType,
-      path: "emberlens/gallery",
+      path: "gallery",
       metadata: { title },
     });
+
+    let watermarkedCdnUrl: string | null = null;
+    try {
+      watermarkedCdnUrl = await uploadWatermarkedToFivemanage(buffer, data.mimeType, {
+        filename: `${baseName}-wm`,
+        title,
+      });
+    } catch (watermarkError) {
+      console.error("Watermark generation failed:", watermarkError);
+    }
 
     const { data: photo, error } = await supabase
       .from("photos")
@@ -157,7 +168,7 @@ export const uploadPhoto = createServerFn({ method: "POST" })
         fivemanage_id: cleanUpload.id,
         cdn_url: cleanUpload.url,
         original_url: cleanUpload.originalUrl ?? null,
-        watermarked_cdn_url: cleanUpload.url,
+        watermarked_cdn_url: watermarkedCdnUrl,
         uploaded_by: user.id,
       })
       .select(PHOTO_SELECT)
@@ -237,6 +248,77 @@ export const deletePhoto = createServerFn({ method: "POST" })
     return { error: null };
   });
 
+export const bulkUpdatePhotos = createServerFn({ method: "POST" })
+  .validator(
+    (data: {
+      ids: string[];
+      category?: PhotoCategory;
+      published?: boolean;
+      featured?: boolean;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const supabase = getSupabaseServerClient();
+
+    if (data.ids.length === 0) {
+      return { error: "No photos selected.", updated: 0 };
+    }
+    if (data.ids.length > 200) {
+      return { error: "Select 200 photos or fewer." };
+    }
+
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (data.category !== undefined) {
+      if (!isPhotoCategory(data.category)) return { error: "Invalid category.", updated: 0 };
+      patch.category = data.category;
+    }
+    if (data.published !== undefined) patch.published = data.published;
+    if (data.featured !== undefined) patch.featured = data.featured;
+
+    if (Object.keys(patch).length === 1) {
+      return { error: "No changes to apply.", updated: 0 };
+    }
+
+    const { error } = await supabase.from("photos").update(patch).in("id", data.ids);
+    if (error) return { error: error.message, updated: 0 };
+    return { error: null, updated: data.ids.length };
+  });
+
+export const bulkDeletePhotos = createServerFn({ method: "POST" })
+  .validator((data: { ids: string[] }) => data)
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const supabase = getSupabaseServerClient();
+
+    if (data.ids.length === 0) {
+      return { error: "No photos selected.", deleted: 0 };
+    }
+    if (data.ids.length > 200) {
+      return { error: "Select 200 photos or fewer." };
+    }
+
+    const { data: rows, error: fetchError } = await supabase
+      .from("photos")
+      .select("fivemanage_id")
+      .in("id", data.ids);
+
+    if (fetchError) return { error: fetchError.message, deleted: 0 };
+
+    const { error } = await supabase.from("photos").delete().in("id", data.ids);
+    if (error) return { error: error.message, deleted: 0 };
+
+    await Promise.all(
+      (rows ?? []).map((row) =>
+        deleteFromFivemanage(row.fivemanage_id).catch((err) => {
+          console.error("Fivemanage delete failed:", err);
+        }),
+      ),
+    );
+
+    return { error: null, deleted: data.ids.length };
+  });
+
 export const fetchPublishedProjects = createServerFn({ method: "GET" }).handler(
   async (): Promise<PublicProjectListItem[]> => {
     const supabase = getSupabaseServerClient();
@@ -261,7 +343,16 @@ export const fetchPublishedProjects = createServerFn({ method: "GET" }).handler(
       date: formatShootDate(project.shoot_date),
       category: project.category,
       description: project.description,
-      cover: project.cover ? photoUrlForProject(project.cover, project) : "",
+      cover: project.cover_photo_id && project.cover
+        ? photoUrlForProject(
+            {
+              id: project.cover_photo_id,
+              cdn_url: project.cover.cdn_url,
+              watermarked_cdn_url: project.cover.watermarked_cdn_url,
+            },
+            project,
+          )
+        : "",
       clientPaid: Boolean(project.client_paid_at),
       publicWatermarked: project.public_watermarked,
     }));

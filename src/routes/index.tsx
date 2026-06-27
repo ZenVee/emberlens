@@ -1,5 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Camera, Sparkles, MapPin, Mail } from "lucide-react";
+import { useState } from "react";
+
+import { AppSelect } from "@/components/app-select";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { PhotoCard } from "@/components/photo-card";
 import { MediaImage } from "@/components/media-image";
@@ -29,9 +32,17 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
+const SESSION_OPTIONS = [
+  { value: "portrait", label: "Portrait session" },
+  { value: "automotive", label: "Automotive shoot" },
+  { value: "event", label: "Event coverage" },
+  { value: "lifestyle", label: "Lifestyle / Travel" },
+];
+
 function Index() {
   const settings = useSiteSettings();
   const { featuredPhotos, recentProjects } = Route.useLoaderData();
+  const [sessionType, setSessionType] = useState(SESSION_OPTIONS[0].value);
   const heroSrc = settings.hero_image_url ?? heroImage;
 
   return (
@@ -228,12 +239,13 @@ function Index() {
           <form className="grid gap-4 sm:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
             <input className="rounded-xl border border-border bg-background/60 px-4 py-3 text-sm outline-none focus:border-ember" placeholder="Your name" />
             <input className="rounded-xl border border-border bg-background/60 px-4 py-3 text-sm outline-none focus:border-ember" placeholder="Your name" />
-            <select className="rounded-xl border border-border bg-background/60 px-4 py-3 text-sm outline-none focus:border-ember sm:col-span-2">
-              <option>Portrait session</option>
-              <option>Automotive shoot</option>
-              <option>Event coverage</option>
-              <option>Lifestyle / Travel</option>
-            </select>
+            <div className="sm:col-span-2">
+              <AppSelect
+                value={sessionType}
+                onValueChange={setSessionType}
+                options={SESSION_OPTIONS}
+              />
+            </div>
             <textarea rows={4} className="rounded-xl border border-border bg-background/60 px-4 py-3 text-sm outline-none focus:border-ember sm:col-span-2" placeholder="Tell us about the vibe, location, date…" />
             <button className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-ember px-6 py-3 text-sm font-medium text-primary-foreground shadow-glow sm:col-span-2">
               <Mail className="h-4 w-4" /> Send request

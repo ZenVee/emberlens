@@ -89,12 +89,19 @@ export function projectPageWatermarked(
   return publicGalleryWatermarked(project);
 }
 
+export function publicPhotoSrc(
+  photo: Pick<DbPhoto, "cdn_url" | "watermarked_cdn_url">,
+  watermarked: boolean,
+): string {
+  if (watermarked && photo.watermarked_cdn_url) return photo.watermarked_cdn_url;
+  return photo.cdn_url;
+}
+
 export function photoUrlForProject(
   photo: Pick<DbPhoto, "cdn_url" | "watermarked_cdn_url">,
-  project: Pick<DbProject, "client_paid_at">,
+  project: Pick<DbProject, "client_paid_at" | "published" | "public_watermarked">,
 ): string {
-  void photo.watermarked_cdn_url;
-  return photo.cdn_url;
+  return publicPhotoSrc(photo, projectPageWatermarked(project));
 }
 
 export function toPublicPhoto(photo: DbPhoto): PublicPhoto {

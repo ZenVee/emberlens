@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { AdminLoading } from "@/components/admin-loading";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { AppSelect } from "@/components/app-select";
 import { prefetchAdminProject, useAdminProjects } from "@/lib/admin-queries";
 import { PHOTO_CATEGORIES, formatShootDate, type PhotoCategory } from "@/lib/media-types";
 import { createProject, deleteProject, updateProject } from "@/lib/media";
@@ -234,19 +235,13 @@ function AdminProjectsList() {
             <div className="mt-4 grid gap-4">
               <Field label="Title" value={form.title} onChange={(v) => setForm({ ...form, title: v })} required />
               <Field label="Client" value={form.client} onChange={(v) => setForm({ ...form, client: v })} />
-              <label className="block text-sm">
+              <label className="block space-y-2 text-sm">
                 <span className="text-muted-foreground">Category</span>
-                <select
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ember"
+                <AppSelect
                   value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value as PhotoCategory })}
-                >
-                  {PHOTO_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+                  onValueChange={(v) => setForm({ ...form, category: v as PhotoCategory })}
+                  options={PHOTO_CATEGORIES.map((c) => ({ value: c, label: c }))}
+                />
               </label>
               <label className="block text-sm">
                 <span className="text-muted-foreground">Shoot date</span>

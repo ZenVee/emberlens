@@ -101,7 +101,7 @@ export const uploadHeroImage = createServerFn({ method: "POST" })
     const upload = await uploadToFivemanage(buffer, {
       filename: `${baseName}.${ext}`,
       mimeType: data.mimeType,
-      path: "emberlens/site",
+      path: "site",
       metadata: { type: "hero" },
     });
 

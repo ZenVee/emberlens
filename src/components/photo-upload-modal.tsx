@@ -1,6 +1,7 @@
-import { ImagePlus, Loader2, Trash2, Upload } from "lucide-react";
+import { ImagePlus, Trash2, Upload } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { AppSelect } from "@/components/app-select";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { PHOTO_CATEGORIES, type DbPhoto, type PhotoCategory } from "@/lib/media-types";
+
+const CATEGORY_OPTIONS = PHOTO_CATEGORIES.map((c) => ({ value: c, label: c }));
 
 type UploadItem = {
   id: string;
@@ -18,6 +22,7 @@ type UploadItem = {
   title: string;
   category: PhotoCategory;
   status: "pending" | "uploading" | "done" | "error";
+  progress: number;
   error?: string;
 };
 
@@ -40,16 +45,40 @@ function titleFromFilename(filename: string) {
   return filename.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
 }
 
-function fileToBase64(file: File): Promise<string> {
+function fileToBase64(file: File, onProgress?: (percent: number) => void): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
+    reader.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      onProgress?.(Math.round((event.loaded / event.total) * 100));
+    };
     reader.onload = () => {
+      onProgress?.(100);
       const result = reader.result as string;
       resolve(result.split(",")[1] ?? "");
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+const UPLOAD_CONCURRENCY = 3;
+
+/** Creeps progress toward `cap` while the server upload runs, then cancel on completion. */
+function runUploadProgress(
+  setProgress: (percent: number) => void,
+  from = 28,
+  cap = 94,
+): () => void {
+  let current = from;
+  setProgress(current);
+  const id = window.setInterval(() => {
+    const remaining = cap - current;
+    if (remaining <= 0.25) return;
+    current += Math.max(0.5, remaining * 0.14);
+    setProgress(Math.min(Math.round(current), cap));
+  }, 100);
+  return () => clearInterval(id);
 }
 
 export function PhotoUploadModal({ open, onOpenChange, onUpload, onUploaded }: PhotoUploadModalProps) {
@@ -88,6 +117,7 @@ export function PhotoUploadModal({ open, onOpenChange, onUpload, onUploaded }: P
       title: titleFromFilename(file.name),
       category: defaultCategory,
       status: "pending",
+      progress: 0,
     }));
 
     setItems((prev) => [...prev, ...next]);
@@ -105,6 +135,76 @@ export function PhotoUploadModal({ open, onOpenChange, onUpload, onUploaded }: P
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
 
+  async function uploadSingleItem(item: UploadItem): Promise<DbPhoto | null> {
+    setItems((prev) =>
+      prev.map((entry) =>
+        entry.id === item.id
+          ? { ...entry, status: "uploading", progress: 0, error: undefined }
+          : entry,
+      ),
+    );
+
+    const setItemProgress = (percent: number) => {
+      setItems((prev) =>
+        prev.map((entry) =>
+          entry.id === item.id ? { ...entry, progress: percent } : entry,
+        ),
+      );
+    };
+
+    try {
+      const base64 = await fileToBase64(item.file, (readPct) =>
+        setItemProgress(Math.round(readPct * 0.25)),
+      );
+
+      const stopProgress = runUploadProgress(setItemProgress, 28, 94);
+      let result: Awaited<ReturnType<PhotoUploadModalProps["onUpload"]>>;
+      try {
+        result = await onUpload({
+          fileBase64: base64,
+          mimeType: item.file.type || "image/jpeg",
+          filename: item.file.name,
+          title: item.title.trim() || titleFromFilename(item.file.name),
+          category: item.category,
+        });
+      } finally {
+        stopProgress();
+      }
+
+      if (result.error || !result.photo) {
+        setItems((prev) =>
+          prev.map((entry) =>
+            entry.id === item.id
+              ? { ...entry, status: "error", progress: 0, error: result.error ?? "Upload failed." }
+              : entry,
+          ),
+        );
+        return null;
+      }
+
+      setItems((prev) =>
+        prev.map((entry) =>
+          entry.id === item.id ? { ...entry, status: "done", progress: 100 } : entry,
+        ),
+      );
+      return result.photo;
+    } catch (err) {
+      setItems((prev) =>
+        prev.map((entry) =>
+          entry.id === item.id
+            ? {
+                ...entry,
+                status: "error",
+                progress: 0,
+                error: err instanceof Error ? err.message : "Upload failed.",
+              }
+            : entry,
+        ),
+      );
+      return null;
+    }
+  }
+
   async function handleUploadAll() {
     const pending = items.filter((item) => item.status === "pending" || item.status === "error");
     if (pending.length === 0) return;
@@ -112,51 +212,10 @@ export function PhotoUploadModal({ open, onOpenChange, onUpload, onUploaded }: P
     setUploading(true);
     const uploaded: DbPhoto[] = [];
 
-    for (const item of pending) {
-      setItems((prev) =>
-        prev.map((entry) =>
-          entry.id === item.id ? { ...entry, status: "uploading", error: undefined } : entry,
-        ),
-      );
-
-      try {
-        const base64 = await fileToBase64(item.file);
-        const result = await onUpload({
-          fileBase64: base64,
-          mimeType: item.file.type || "image/jpeg",
-          filename: item.file.name,
-          title: item.title.trim() || titleFromFilename(item.file.name),
-          category: item.category,
-        });
-
-        if (result.error || !result.photo) {
-          setItems((prev) =>
-            prev.map((entry) =>
-              entry.id === item.id
-                ? { ...entry, status: "error", error: result.error ?? "Upload failed." }
-                : entry,
-            ),
-          );
-          continue;
-        }
-
-        uploaded.push(result.photo);
-        setItems((prev) =>
-          prev.map((entry) => (entry.id === item.id ? { ...entry, status: "done" } : entry)),
-        );
-      } catch (err) {
-        setItems((prev) =>
-          prev.map((entry) =>
-            entry.id === item.id
-              ? {
-                  ...entry,
-                  status: "error",
-                  error: err instanceof Error ? err.message : "Upload failed.",
-                }
-              : entry,
-          ),
-        );
-      }
+    for (let i = 0; i < pending.length; i += UPLOAD_CONCURRENCY) {
+      const batch = pending.slice(i, i + UPLOAD_CONCURRENCY);
+      const results = await Promise.all(batch.map((item) => uploadSingleItem(item)));
+      uploaded.push(...results.filter((photo): photo is DbPhoto => photo !== null));
     }
 
     setUploading(false);
@@ -166,12 +225,20 @@ export function PhotoUploadModal({ open, onOpenChange, onUpload, onUploaded }: P
     }
 
     if (uploaded.length === pending.length) {
+      await new Promise((resolve) => setTimeout(resolve, 450));
       onOpenChange(false);
     }
   }
 
   const pendingCount = items.filter((item) => item.status === "pending" || item.status === "error").length;
   const doneCount = items.filter((item) => item.status === "done").length;
+  const uploadingItems = items.filter((item) => item.status === "uploading");
+  const overallProgress =
+    uploadingItems.length > 0
+      ? Math.round(
+          uploadingItems.reduce((sum, item) => sum + item.progress, 0) / uploadingItems.length,
+        )
+      : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -223,17 +290,12 @@ export function PhotoUploadModal({ open, onOpenChange, onUpload, onUploaded }: P
 
           <label className="flex items-center justify-between gap-3 text-sm">
             <span className="text-muted-foreground">Default category for new images</span>
-            <select
-              className="rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ember"
+            <AppSelect
+              className="w-40"
               value={defaultCategory}
-              onChange={(e) => setDefaultCategory(e.target.value as PhotoCategory)}
-            >
-              {PHOTO_CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
+              onValueChange={(v) => setDefaultCategory(v as PhotoCategory)}
+              options={CATEGORY_OPTIONS}
+            />
           </label>
 
           {items.length > 0 && (
@@ -262,22 +324,20 @@ export function PhotoUploadModal({ open, onOpenChange, onUpload, onUploaded }: P
                       onChange={(e) => updateItem(item.id, { title: e.target.value })}
                       placeholder="Photo title"
                     />
-                    <select
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ember disabled:opacity-60"
+                    <AppSelect
                       value={item.category}
                       disabled={item.status === "uploading" || item.status === "done"}
-                      onChange={(e) => updateItem(item.id, { category: e.target.value as PhotoCategory })}
-                    >
-                      {PHOTO_CATEGORIES.map((category) => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                    </select>
+                      onValueChange={(v) => updateItem(item.id, { category: v as PhotoCategory })}
+                      options={CATEGORY_OPTIONS}
+                    />
                     {item.status === "uploading" && (
-                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Loader2 className="h-3 w-3 animate-spin" /> Uploading…
-                      </p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>Uploading</span>
+                          <span>{item.progress}%</span>
+                        </div>
+                        <Progress value={item.progress} className="h-1.5 bg-secondary" />
+                      </div>
                     )}
                     {item.status === "done" && (
                       <p className="text-xs text-emerald-400">Uploaded</p>
@@ -302,14 +362,21 @@ export function PhotoUploadModal({ open, onOpenChange, onUpload, onUploaded }: P
           )}
         </div>
 
-        <DialogFooter className="border-t border-border/60 px-6 py-4 sm:justify-between">
-          <p className="text-xs text-muted-foreground">
-            {items.length === 0
-              ? "No images selected"
-              : doneCount > 0
-                ? `${doneCount} uploaded${pendingCount > 0 ? `, ${pendingCount} remaining` : ""}`
-                : `${items.length} image${items.length === 1 ? "" : "s"} ready`}
-          </p>
+        <DialogFooter className="flex-col gap-3 border-t border-border/60 px-6 py-4 sm:flex-row sm:justify-between">
+          <div className="min-w-0 flex-1 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              {items.length === 0
+                ? "No images selected"
+                : uploading
+                  ? `Uploading ${uploadingItems.length} of ${pendingCount + doneCount}…`
+                  : doneCount > 0
+                    ? `${doneCount} uploaded${pendingCount > 0 ? `, ${pendingCount} remaining` : ""}`
+                    : `${items.length} image${items.length === 1 ? "" : "s"} ready`}
+            </p>
+            {uploading && (
+              <Progress value={overallProgress} className="h-1.5 max-w-xs bg-secondary" />
+            )}
+          </div>
           <div className="flex gap-2">
             <button
               type="button"
@@ -325,16 +392,10 @@ export function PhotoUploadModal({ open, onOpenChange, onUpload, onUploaded }: P
               onClick={() => void handleUploadAll()}
               className="inline-flex items-center gap-2 rounded-full bg-gradient-ember px-4 py-2 text-sm font-medium text-primary-foreground shadow-glow disabled:opacity-60"
             >
-              {uploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Uploading…
-                </>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4" /> Upload {pendingCount > 0 ? pendingCount : ""}{" "}
-                  {pendingCount === 1 ? "photo" : "photos"}
-                </>
-              )}
+              <Upload className="h-4 w-4" />
+              {uploading
+                ? `${overallProgress}%`
+                : `Upload ${pendingCount > 0 ? pendingCount : ""} ${pendingCount === 1 ? "photo" : "photos"}`}
             </button>
           </div>
         </DialogFooter>

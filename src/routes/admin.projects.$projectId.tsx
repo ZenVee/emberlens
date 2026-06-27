@@ -6,9 +6,16 @@ import { useState, type ComponentType } from "react";
 
 import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { AdminLoading } from "@/components/admin-loading";
+import { AppSelect } from "@/components/app-select";
 import { PhotoUploadModal } from "@/components/photo-upload-modal";
 import { useAdminProject } from "@/lib/admin-queries";
 import { PHOTO_CATEGORIES, type DbPhoto, type DbProject, type PhotoCategory } from "@/lib/media-types";
+
+const NO_CATEGORY = "__none__";
+const PROJECT_CATEGORY_OPTIONS = [
+  { value: NO_CATEGORY, label: "None" },
+  ...PHOTO_CATEGORIES.map((c) => ({ value: c, label: c })),
+];
 import { setProjectPhotos, updateProject, uploadPhoto } from "@/lib/media";
 import { adminPhotosQueryKey } from "@/lib/query-keys";
 
@@ -194,25 +201,18 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
               value={project.client ?? ""}
               onChange={(v) => setProject({ ...project, client: v })}
             />
-            <label className="block text-sm">
+            <label className="block space-y-2 text-sm">
               <span className="text-muted-foreground">Category</span>
-              <select
-                className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ember"
-                value={project.category ?? ""}
-                onChange={(e) =>
+              <AppSelect
+                value={project.category ?? NO_CATEGORY}
+                onValueChange={(v) =>
                   setProject({
                     ...project,
-                    category: (e.target.value || null) as PhotoCategory | null,
+                    category: v === NO_CATEGORY ? null : (v as PhotoCategory),
                   })
                 }
-              >
-                <option value="">None</option>
-                {PHOTO_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
+                options={PROJECT_CATEGORY_OPTIONS}
+              />
             </label>
             <label className="block text-sm">
               <span className="text-muted-foreground">Shoot date</span>
