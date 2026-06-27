@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Check, X, Mail } from "lucide-react";
 import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { bookings } from "@/lib/mock-data";
-import { StatusBadge } from "./admin.index";
+import { StatusBadge } from "@/components/status-badge";
 
 export const Route = createFileRoute("/admin/bookings")({
   head: () => ({ meta: [{ title: "Bookings — Ember Lens Studio" }] }),
