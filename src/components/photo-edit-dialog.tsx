@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { categorySelectOptions } from "@/lib/categories";
 import type { DbPhoto } from "@/lib/media-types";
@@ -134,6 +135,7 @@ export function PhotoEditDialog({ photo, categories, onClose, onSave }: PhotoEdi
                 tone={draft.published ? "success" : "muted"}
               />
               {draft.featured && <StatusPill label="Featured" tone="accent" />}
+              {draft.public_watermarked && <StatusPill label="Public watermark" tone="accent" />}
             </div>
 
             <div className="space-y-2">
@@ -153,6 +155,28 @@ export function PhotoEditDialog({ photo, categories, onClose, onSave }: PhotoEdi
                 options={categoryOptions}
               />
             </div>
+
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background/40 px-4 py-3">
+              <div className="space-y-0.5">
+                <Label htmlFor="photo-edit-watermark">Public gallery watermark</Label>
+                <p className="text-xs text-muted-foreground">
+                  Show the watermarked version on the public gallery and homepage.
+                </p>
+              </div>
+              <Switch
+                id="photo-edit-watermark"
+                checked={draft.public_watermarked}
+                disabled={!hasWatermark}
+                onCheckedChange={(checked) =>
+                  setDraft({ ...draft, public_watermarked: checked })
+                }
+              />
+            </div>
+            {!hasWatermark && (
+              <p className="text-xs text-muted-foreground">
+                Upload a watermarked version before enabling this.
+              </p>
+            )}
           </div>
         </div>
 

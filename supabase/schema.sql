@@ -66,6 +66,7 @@ create table public.photos (
   sort_order int not null default 0,
   featured boolean not null default false,
   published boolean not null default false,
+  public_watermarked boolean not null default false,
   uploaded_by uuid references auth.users (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

@@ -21,6 +21,7 @@ export type DbPhoto = {
   sort_order: number;
   featured: boolean;
   published: boolean;
+  public_watermarked: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -106,12 +107,14 @@ export function photoUrlForProject(
 }
 
 export function toPublicPhoto(photo: DbPhoto): PublicPhoto {
+  const watermarked = photo.public_watermarked;
   return {
     id: photo.id,
     title: photo.title,
     category: photo.category,
-    src: photo.cdn_url,
+    src: publicPhotoSrc(photo, watermarked),
     alt_text: photo.alt_text,
+    watermarked,
   };
 }
 

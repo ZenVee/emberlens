@@ -11,6 +11,7 @@ import {
   Star,
   Eye,
   EyeOff,
+  Lock,
   X,
   SlidersHorizontal,
 } from "lucide-react";
@@ -179,6 +180,21 @@ function AdminPhotos() {
     );
   }
 
+  async function togglePublicWatermarked(photo: DbPhoto) {
+    const result = await updateFn({
+      data: { id: photo.id, public_watermarked: !photo.public_watermarked },
+    });
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+    updatePhotos((prev) =>
+      prev.map((p) =>
+        p.id === photo.id ? { ...p, public_watermarked: !p.public_watermarked } : p,
+      ),
+    );
+  }
+
   async function confirmDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -218,6 +234,7 @@ function AdminPhotos() {
     category?: PhotoCategory;
     published?: boolean;
     featured?: boolean;
+    public_watermarked?: boolean;
   }) {
     const ids = [...selected];
     if (ids.length === 0) return;
@@ -236,7 +253,12 @@ function AdminPhotos() {
 
   async function saveEdit(updated: DbPhoto) {
     const result = await updateFn({
-      data: { id: updated.id, title: updated.title, category: updated.category },
+      data: {
+        id: updated.id,
+        title: updated.title,
+        category: updated.category,
+        public_watermarked: updated.public_watermarked,
+      },
     });
     if (result.error) {
       throw new Error(result.error);
@@ -402,6 +424,7 @@ function AdminPhotos() {
               onDelete={() => setDeleteTarget(p)}
               onTogglePublished={() => void togglePublished(p)}
               onToggleFeatured={() => void toggleFeatured(p)}
+              onTogglePublicWatermarked={() => void togglePublicWatermarked(p)}
             />
           ))}
         </div>
@@ -451,8 +474,10 @@ function AdminPhotos() {
                         onDelete={() => setDeleteTarget(p)}
                         onTogglePublished={() => void togglePublished(p)}
                         onToggleFeatured={() => void toggleFeatured(p)}
+                        onTogglePublicWatermarked={() => void togglePublicWatermarked(p)}
                         published={p.published}
                         featured={p.featured}
+                        publicWatermarked={p.public_watermarked}
                       />
                     </td>
                   </tr>
@@ -489,6 +514,18 @@ function AdminPhotos() {
             onClick={() => void runBulkUpdate({ featured: false })}
             icon={Star}
             label="Unfeature"
+          />
+          <BulkButton
+            disabled={bulkWorking}
+            onClick={() => void runBulkUpdate({ public_watermarked: true })}
+            icon={Lock}
+            label="Watermark"
+          />
+          <BulkButton
+            disabled={bulkWorking}
+            onClick={() => void runBulkUpdate({ public_watermarked: false })}
+            icon={Lock}
+            label="Unwatermark"
           />
           <div className="hidden h-5 w-px bg-border sm:block" />
           <AppSelect
@@ -616,6 +653,11 @@ function StatusBadges({ photo }: { photo: DbPhoto }) {
       {photo.featured && (
         <span className="rounded-full bg-ember/15 px-2 py-0.5 text-xs text-ember">Featured</span>
       )}
+      {photo.public_watermarked && (
+        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-400">
+          Watermarked
+        </span>
+      )}
     </div>
   );
 }
@@ -625,15 +667,19 @@ function PhotoActions({
   onDelete,
   onTogglePublished,
   onToggleFeatured,
+  onTogglePublicWatermarked,
   published,
   featured,
+  publicWatermarked,
 }: {
   onEdit: () => void;
   onDelete: () => void;
   onTogglePublished: () => void;
   onToggleFeatured: () => void;
+  onTogglePublicWatermarked: () => void;
   published: boolean;
   featured: boolean;
+  publicWatermarked: boolean;
 }) {
   return (
     <div className="flex justify-end gap-0.5">
@@ -642,6 +688,12 @@ function PhotoActions({
       </IconButton>
       <IconButton onClick={onToggleFeatured} title={featured ? "Unfeature" : "Feature"}>
         <Star className={cn("h-3.5 w-3.5", featured && "fill-current text-ember")} />
+      </IconButton>
+      <IconButton
+        onClick={onTogglePublicWatermarked}
+        title={publicWatermarked ? "Remove public watermark" : "Watermark on public gallery"}
+      >
+        <Lock className={cn("h-3.5 w-3.5", publicWatermarked && "text-amber-400")} />
       </IconButton>
       <IconButton onClick={onEdit} title="Edit">
         <Pencil className="h-3.5 w-3.5" />
@@ -687,6 +739,7 @@ function PhotoGridCard({
   onDelete,
   onTogglePublished,
   onToggleFeatured,
+  onTogglePublicWatermarked,
 }: {
   photo: DbPhoto;
   selected: boolean;
@@ -695,6 +748,7 @@ function PhotoGridCard({
   onDelete: () => void;
   onTogglePublished: () => void;
   onToggleFeatured: () => void;
+  onTogglePublicWatermarked: () => void;
 }) {
   return (
     <article
@@ -737,6 +791,12 @@ function PhotoGridCard({
           </OverlayAction>
           <OverlayAction onClick={onToggleFeatured} title={photo.featured ? "Unfeature" : "Feature"}>
             <Star className={cn("h-3.5 w-3.5", photo.featured && "fill-current")} />
+          </OverlayAction>
+          <OverlayAction
+            onClick={onTogglePublicWatermarked}
+            title={photo.public_watermarked ? "Remove public watermark" : "Watermark on public gallery"}
+          >
+            <Lock className={cn("h-3.5 w-3.5", photo.public_watermarked && "text-amber-300")} />
           </OverlayAction>
           <OverlayAction onClick={onEdit} title="Edit">
             <Pencil className="h-3.5 w-3.5" />

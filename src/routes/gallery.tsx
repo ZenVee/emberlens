@@ -36,7 +36,11 @@ function GalleryPage() {
     [filter, photos],
   );
 
-  const lightboxItems = filtered.map((p) => ({ src: p.src, title: p.title }));
+  const lightboxItems = filtered.map((p) => ({
+    src: p.src,
+    title: p.title,
+    watermarked: p.watermarked,
+  }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -79,6 +83,7 @@ function GalleryPage() {
                 title={p.title}
                 subtitle={p.category}
                 aspect={i % 4 === 1 ? "portrait" : i % 4 === 2 ? "landscape" : "square"}
+                watermarked={p.watermarked}
                 onClick={() => setOpenIndex(i)}
               />
             ))}

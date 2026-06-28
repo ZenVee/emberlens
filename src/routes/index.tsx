@@ -122,6 +122,7 @@ function Index() {
                 title={p.title}
                 subtitle={p.category}
                 aspect={i % 5 === 0 ? "portrait" : "square"}
+                watermarked={p.watermarked}
               />
             ))
           )}

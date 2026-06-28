@@ -20,9 +20,10 @@ import {
 import { loadSiteSettings } from "./site-settings-data";
 import { getSupabaseServerClient } from "./supabase";
 import { syncProjectPaidToBookings } from "./paid-sync";
+import { uploadWatermarkedToFivemanage } from "./watermark-image";
 
 const PHOTO_SELECT =
-  "id, title, category, fivemanage_id, cdn_url, watermarked_cdn_url, original_url, alt_text, sort_order, featured, published, created_at, updated_at";
+  "id, title, category, fivemanage_id, cdn_url, watermarked_cdn_url, original_url, alt_text, sort_order, featured, published, public_watermarked, created_at, updated_at";
 
 const PROJECT_SELECT =
   "id, slug, title, client, shoot_date, category, description, download_link, cover_photo_id, published, client_paid_at, public_watermarked, sort_order, created_at, updated_at";
@@ -226,6 +227,7 @@ export const updatePhoto = createServerFn({ method: "POST" })
       category?: PhotoCategory;
       published?: boolean;
       featured?: boolean;
+      public_watermarked?: boolean;
       sort_order?: number;
     }) => data,
   )
@@ -242,6 +244,7 @@ export const updatePhoto = createServerFn({ method: "POST" })
     }
     if (data.published !== undefined) patch.published = data.published;
     if (data.featured !== undefined) patch.featured = data.featured;
+    if (data.public_watermarked !== undefined) patch.public_watermarked = data.public_watermarked;
     if (data.sort_order !== undefined) patch.sort_order = data.sort_order;
 
     const { error } = await supabase.from("photos").update(patch).eq("id", data.id);
@@ -281,6 +284,7 @@ export const bulkUpdatePhotos = createServerFn({ method: "POST" })
       category?: PhotoCategory;
       published?: boolean;
       featured?: boolean;
+      public_watermarked?: boolean;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -302,6 +306,7 @@ export const bulkUpdatePhotos = createServerFn({ method: "POST" })
     }
     if (data.published !== undefined) patch.published = data.published;
     if (data.featured !== undefined) patch.featured = data.featured;
+    if (data.public_watermarked !== undefined) patch.public_watermarked = data.public_watermarked;
 
     if (Object.keys(patch).length === 1) {
       return { error: "No changes to apply.", updated: 0 };
