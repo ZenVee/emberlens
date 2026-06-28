@@ -9,15 +9,14 @@ import { AdminLoading } from "@/components/admin-loading";
 import { AppSelect } from "@/components/app-select";
 import { PhotoUploadModal } from "@/components/photo-upload-modal";
 import { useAdminProject } from "@/lib/admin-queries";
-import { PHOTO_CATEGORIES, type DbPhoto, type DbProject, type PhotoCategory } from "@/lib/media-types";
+import { categorySelectOptions } from "@/lib/categories";
+import { type DbPhoto, type DbProject, type PhotoCategory } from "@/lib/media-types";
+import { setProjectPhotos, updateProject, uploadPhoto } from "@/lib/media";
+import { adminPhotosQueryKey, adminBookingsQueryKey, adminBookingQueryKey } from "@/lib/query-keys";
+import type { DbBooking } from "@/lib/bookings-types";
+import { useSiteSettings } from "@/lib/site-settings-queries";
 
 const NO_CATEGORY = "__none__";
-const PROJECT_CATEGORY_OPTIONS = [
-  { value: NO_CATEGORY, label: "None" },
-  ...PHOTO_CATEGORIES.map((c) => ({ value: c, label: c })),
-];
-import { setProjectPhotos, updateProject, uploadPhoto } from "@/lib/media";
-import { adminPhotosQueryKey } from "@/lib/query-keys";
 
 type AdminProjectData = {
   project: DbProject;
@@ -70,6 +69,12 @@ function AdminProjectEdit() {
 }
 
 function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
+  const settings = useSiteSettings();
+  const projectCategoryOptions = [
+    { value: NO_CATEGORY, label: "None" },
+    ...categorySelectOptions(settings.project_categories, initial.project.category),
+  ];
+
   const queryClient = useQueryClient();
   const [project, setProject] = useState(initial.project);
   const [photos, setPhotos] = useState<DbPhoto[]>(() =>
@@ -99,6 +104,7 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
         description: project.description ?? "",
         category: project.category,
         shoot_date: project.shoot_date,
+        download_link: project.download_link,
         cover_photo_id: coverId || null,
         published: project.published,
         client_paid: Boolean(project.client_paid_at),
@@ -121,6 +127,23 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
       setError(photosResult.error);
       return;
     }
+
+    queryClient.setQueryData(adminBookingsQueryKey, (prev: DbBooking[] | undefined) => {
+      const next =
+        prev?.map((booking) =>
+          booking.project_id === project.id
+            ? { ...booking, client_paid_at: project.client_paid_at }
+            : booking,
+        ) ?? prev;
+      if (next) {
+        for (const booking of next) {
+          if (booking.project_id === project.id) {
+            queryClient.setQueryData(adminBookingQueryKey(booking.id), booking);
+          }
+        }
+      }
+      return next;
+    });
 
     setMessage("Project saved.");
   }
@@ -211,7 +234,7 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
                     category: v === NO_CATEGORY ? null : (v as PhotoCategory),
                   })
                 }
-                options={PROJECT_CATEGORY_OPTIONS}
+                options={projectCategoryOptions}
               />
             </label>
             <label className="block text-sm">
@@ -232,6 +255,12 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
                 onChange={(e) => setProject({ ...project, description: e.target.value })}
               />
             </label>
+            <TextField
+              label="Download link"
+              value={project.download_link ?? ""}
+              onChange={(v) => setProject({ ...project, download_link: v || null })}
+              placeholder="https://drive.google.com/..."
+            />
           </div>
 
           <div className="mt-6 space-y-3 border-t border-border/60 pt-6">
@@ -270,7 +299,11 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
             />
             <ToggleRow
               label="Client paid"
-              description="Remove watermarks from the client gallery link"
+              description={
+                project.client_paid_at
+                  ? "Synced with linked bookings"
+                  : "Remove watermarks from the client gallery link"
+              }
               checked={Boolean(project.client_paid_at)}
               onChange={(paid) =>
                 setProject({
@@ -322,6 +355,7 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
           <PhotoUploadModal
             open={uploadOpen}
             onOpenChange={setUploadOpen}
+            categories={settings.photo_categories}
             onUpload={(payload) => uploadFn({ data: { ...payload, projectId: project.id } })}
             onUploaded={handlePhotosUploaded}
           />
@@ -356,10 +390,12 @@ function TextField({
   label,
   value,
   onChange,
+  placeholder,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  placeholder?: string;
 }) {
   return (
     <label className="block text-sm">
@@ -367,6 +403,7 @@ function TextField({
       <input
         className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ember"
         value={value}
+        placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
       />
     </label>

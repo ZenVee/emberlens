@@ -79,6 +79,7 @@ create table public.projects (
   shoot_date date,
   category public.photo_category,
   description text,
+  download_link text,
   cover_photo_id uuid references public.photos (id) on delete set null,
   published boolean not null default false,
   client_paid_at timestamptz,
@@ -145,6 +146,41 @@ create policy "Admins manage project photos"
   using (public.is_admin())
   with check (public.is_admin());
 
+-- Bookings
+
+create type public.booking_status as enum ('Pending', 'Confirmed', 'Declined');
+
+create table public.bookings (
+  id uuid primary key default gen_random_uuid(),
+  client_name text not null,
+  session_type text not null,
+  shoot_at timestamptz not null,
+  phone_number text,
+  notes text,
+  status public.booking_status not null default 'Pending',
+  project_id uuid references public.projects(id) on delete set null,
+  client_paid_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index bookings_shoot_at_idx on public.bookings (shoot_at);
+create index bookings_status_idx on public.bookings (status);
+create index bookings_project_id_idx on public.bookings (project_id);
+
+alter table public.bookings enable row level security;
+
+create policy "Anyone can submit a booking request"
+  on public.bookings
+  for insert
+  with check (status = 'Pending');
+
+create policy "Admins manage bookings"
+  on public.bookings
+  for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
 -- Site settings (singleton row)
 
 create table public.site_settings (
@@ -177,6 +213,28 @@ create table public.site_settings (
     {"title": "Automotive", "description": "Custom builds, garage features, and rolling shots after dark.", "price": "from $400"},
     {"title": "Events", "description": "Clubs, openings, after-parties — captured cinematic and discreet.", "price": "from $600"},
     {"title": "Lifestyle & Travel", "description": "Editorial photo essays for brands, magazines, and personal stories.", "price": "Custom"}
+  ]'::jsonb,
+  photo_categories jsonb not null default '[
+    "Portrait",
+    "Automotive",
+    "Event",
+    "Street",
+    "Lifestyle",
+    "Cityscape"
+  ]'::jsonb,
+  project_categories jsonb not null default '[
+    "Portrait",
+    "Automotive",
+    "Event",
+    "Street",
+    "Lifestyle",
+    "Cityscape"
+  ]'::jsonb,
+  session_types jsonb not null default '[
+    "Portrait session",
+    "Automotive shoot",
+    "Event coverage",
+    "Lifestyle / Travel"
   ]'::jsonb,
   updated_at timestamptz not null default now()
 );

@@ -11,10 +11,11 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { AdminLoading } from "@/components/admin-loading";
+import { SaveStatus } from "@/components/save-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,7 @@ import {
   type SiteSettingsForm,
   type SiteService,
 } from "@/lib/site-settings-types";
+import { useAutoSave } from "@/hooks/use-auto-save";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -61,7 +63,6 @@ function AdminSettings() {
   const [form, setForm] = useState<SiteSettingsForm | null>(null);
   const [heroUrl, setHeroUrl] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>("brand");
-  const [saving, setSaving] = useState(false);
   const [uploadingHero, setUploadingHero] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -77,10 +78,28 @@ function AdminSettings() {
     subtitle: "Brand, homepage copy, and public page content.",
   });
 
+  const persistSettings = useCallback(
+    async (next: SiteSettingsForm) => {
+      const result = await updateFn({ data: next });
+      if (result.error || !result.settings) {
+        return { ok: false as const, error: result.error ?? "Could not save settings." };
+      }
+      queryClient.setQueryData(siteSettingsQueryKey, result.settings);
+      return { ok: true as const };
+    },
+    [queryClient, updateFn],
+  );
+
+  const { status: saveStatus, error: saveError, syncBaseline } = useAutoSave(form, persistSettings, {
+    enabled: form !== null,
+  });
+
   function syncSettings(settings: SiteSettings) {
     queryClient.setQueryData(siteSettingsQueryKey, settings);
-    setForm(toSiteSettingsForm(settings));
+    const nextForm = toSiteSettingsForm(settings);
+    setForm(nextForm);
     setHeroUrl(settings.hero_image_url);
+    syncBaseline(nextForm);
   }
 
   function updateField<K extends keyof SiteSettingsForm>(key: K, value: SiteSettingsForm[K]) {
@@ -99,22 +118,18 @@ function AdminSettings() {
     });
   }
 
-  async function handleSave() {
-    if (!form) return;
-    setSaving(true);
-    setError(null);
-    setMessage(null);
-
-    const result = await updateFn({ data: form });
-    setSaving(false);
-
-    if (result.error || !result.settings) {
-      setError(result.error ?? "Could not save settings.");
-      return;
-    }
-
-    syncSettings(result.settings);
-    setMessage("Settings saved.");
+  function updateCategoryList(
+    key: "photo_categories" | "project_categories" | "session_types",
+    index: number,
+    value: string,
+  ) {
+    setForm((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [key]: prev[key].map((item, i) => (i === index ? value : item)),
+      };
+    });
   }
 
   async function handleHeroUpload(file: File) {
@@ -168,16 +183,18 @@ function AdminSettings() {
 
   return (
     <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as SettingsTab)} className="space-y-6">
-      {(message || error || isError) && (
+      {(message || error || saveError || isError) && (
         <div className="space-y-2">
           {message && (
             <p className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm text-emerald-400">
               {message}
             </p>
           )}
-          {(error || isError) && (
+          {(error || saveError || isError) && (
             <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2.5 text-sm text-destructive">
-              {error ?? (loadError instanceof Error ? loadError.message : "Could not load settings.")}
+              {error ??
+                saveError ??
+                (loadError instanceof Error ? loadError.message : "Could not load settings.")}
             </p>
           )}
         </div>
@@ -196,20 +213,7 @@ function AdminSettings() {
             </TabsTrigger>
           ))}
         </TabsList>
-        <Button
-          type="button"
-          disabled={saving}
-          onClick={() => void handleSave()}
-          className="shrink-0 rounded-full bg-gradient-ember shadow-glow hover:opacity-90"
-        >
-          {saving ? (
-            <>
-              <Loader2 className="animate-spin" /> Saving…
-            </>
-          ) : (
-            "Save changes"
-          )}
-        </Button>
+        <SaveStatus status={saveStatus} error={saveError} className="shrink-0" />
       </div>
 
       <TabsContent value="brand" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
@@ -478,6 +482,39 @@ function AdminSettings() {
             </div>
           </SettingsPanel>
         </div>
+
+        <SettingsPanel
+          title="Categories & bookings"
+          description="Labels for photos, projects, and booking session types."
+          className="mt-6"
+        >
+          <div className="grid gap-8 lg:grid-cols-2">
+            <CategoryListEditor
+              label="Photo categories"
+              hint="Shown in the gallery filter and photo upload form."
+              items={form.photo_categories}
+              onChange={(items) => updateField("photo_categories", items)}
+              onItemChange={(index, value) => updateCategoryList("photo_categories", index, value)}
+            />
+            <CategoryListEditor
+              label="Project categories"
+              hint="Used when creating and editing projects."
+              items={form.project_categories}
+              onChange={(items) => updateField("project_categories", items)}
+              onItemChange={(index, value) => updateCategoryList("project_categories", index, value)}
+            />
+            <CategoryListEditor
+              label="Session types"
+              hint="Options when adding bookings and on the homepage booking form."
+              placeholder="Session type"
+              addLabel="Add session type"
+              items={form.session_types}
+              onChange={(items) => updateField("session_types", items)}
+              onItemChange={(index, value) => updateCategoryList("session_types", index, value)}
+              className="lg:col-span-2"
+            />
+          </div>
+        </SettingsPanel>
       </TabsContent>
 
       <TabsContent value="footer" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
@@ -546,13 +583,15 @@ function SettingsPanel({
   title,
   description,
   children,
+  className,
 }: {
   title: string;
   description: string;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="rounded-xl border border-border/60 bg-card p-5 shadow-card sm:p-6">
+    <section className={cn("rounded-xl border border-border/60 bg-card p-5 shadow-card sm:p-6", className)}>
       <header className="mb-5 border-b border-border/40 pb-4">
         <h2 className="font-display text-base font-medium">{title}</h2>
         <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
@@ -580,6 +619,65 @@ function FormField({
         {hint && <span className="text-xs text-muted-foreground/70">{hint}</span>}
       </div>
       {children}
+    </div>
+  );
+}
+
+function CategoryListEditor({
+  label,
+  hint,
+  items,
+  onChange,
+  onItemChange,
+  placeholder = "Category name",
+  addLabel = "Add category",
+  className,
+}: {
+  label: string;
+  hint: string;
+  items: string[];
+  onChange: (items: string[]) => void;
+  onItemChange: (index: number, value: string) => void;
+  placeholder?: string;
+  addLabel?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("space-y-3", className)}>
+      <div>
+        <p className="text-sm font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      </div>
+      <div className="space-y-2">
+        {items.map((item, index) => (
+          <div key={index} className="flex gap-2">
+            <Input
+              value={item}
+              onChange={(e) => onItemChange(index, e.target.value)}
+              placeholder={placeholder}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => onChange(items.filter((_, i) => i !== index))}
+              className="shrink-0 text-muted-foreground hover:text-destructive"
+              aria-label={`Remove ${label} ${index + 1}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => onChange([...items, ""])}
+        className="rounded-full"
+      >
+        <Plus /> {addLabel}
+      </Button>
     </div>
   );
 }

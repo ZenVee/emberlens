@@ -20,23 +20,17 @@ import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { AdminLoading } from "@/components/admin-loading";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AppSelect } from "@/components/app-select";
+import { PhotoEditDialog } from "@/components/photo-edit-dialog";
 import { PhotoUploadModal } from "@/components/photo-upload-modal";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAdminPhotos } from "@/lib/admin-queries";
-import { PHOTO_CATEGORIES, type DbPhoto, type PhotoCategory } from "@/lib/media-types";
+import { categorySelectOptions } from "@/lib/categories";
+import { type DbPhoto, type PhotoCategory } from "@/lib/media-types";
 import { bulkDeletePhotos, bulkUpdatePhotos, deletePhoto, updatePhoto, uploadPhoto } from "@/lib/media";
 import { adminPhotosQueryKey } from "@/lib/query-keys";
+import { useSiteSettings } from "@/lib/site-settings-queries";
 import { cn } from "@/lib/utils";
 
 type StatusFilter = "all" | "published" | "draft" | "featured";
@@ -48,19 +42,26 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: "featured", label: "Featured" },
 ];
 
-const CATEGORY_FILTER_OPTIONS = [
-  { value: "all", label: "All categories" },
-  ...PHOTO_CATEGORIES.map((c) => ({ value: c, label: c })),
-];
-
-const CATEGORY_OPTIONS = PHOTO_CATEGORIES.map((c) => ({ value: c, label: c }));
-
 export const Route = createFileRoute("/admin/photos")({
   head: () => ({ meta: [{ title: "Photos — Ember Lens Studio" }] }),
   component: AdminPhotos,
 });
 
 function AdminPhotos() {
+  const settings = useSiteSettings();
+  const photoCategories = settings.photo_categories;
+  const categoryFilterOptions = useMemo(
+    () => [
+      { value: "all", label: "All categories" },
+      ...photoCategories.map((c) => ({ value: c, label: c })),
+    ],
+    [photoCategories],
+  );
+  const categoryOptions = useMemo(
+    () => categorySelectOptions(photoCategories),
+    [photoCategories],
+  );
+
   const { data: photos = [], isPending, isError, error: loadError } = useAdminPhotos();
   const queryClient = useQueryClient();
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -68,7 +69,9 @@ function AdminPhotos() {
   const [categoryFilter, setCategoryFilter] = useState<PhotoCategory | "all">("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkCategory, setBulkCategory] = useState<PhotoCategory>("Portrait");
+  const [bulkCategory, setBulkCategory] = useState<PhotoCategory>(
+    () => photoCategories[0] ?? "Portrait",
+  );
   const [bulkWorking, setBulkWorking] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -223,17 +226,14 @@ function AdminPhotos() {
     );
   }
 
-  async function saveEdit() {
-    if (!editing) return;
+  async function saveEdit(updated: DbPhoto) {
     const result = await updateFn({
-      data: { id: editing.id, title: editing.title, category: editing.category },
+      data: { id: updated.id, title: updated.title, category: updated.category },
     });
     if (result.error) {
-      setError(result.error);
-      return;
+      throw new Error(result.error);
     }
-    updatePhotos((prev) => prev.map((p) => (p.id === editing.id ? editing : p)));
-    setEditing(null);
+    updatePhotos((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
   }
 
   return (
@@ -289,7 +289,7 @@ function AdminPhotos() {
               onValueChange={(v) =>
                 setCategoryFilter(v === "all" ? "all" : (v as PhotoCategory))
               }
-              options={CATEGORY_FILTER_OPTIONS}
+              options={categoryFilterOptions}
             />
 
             <div className="flex rounded-lg border border-border/60 bg-background p-0.5">
@@ -475,7 +475,7 @@ function AdminPhotos() {
             className="w-[8.5rem]"
             value={bulkCategory}
             onValueChange={(v) => setBulkCategory(v as PhotoCategory)}
-            options={CATEGORY_OPTIONS}
+            options={categoryOptions}
           />
           <Button
             type="button"
@@ -512,6 +512,7 @@ function AdminPhotos() {
       <PhotoUploadModal
         open={uploadOpen}
         onOpenChange={setUploadOpen}
+        categories={photoCategories}
         onUpload={(data) => uploadFn({ data })}
         onUploaded={(uploaded) => {
           setError(null);
@@ -549,48 +550,12 @@ function AdminPhotos() {
         onConfirm={confirmBulkDelete}
       />
 
-      <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="rounded-2xl border-border bg-card sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="font-display">Edit photo</DialogTitle>
-            <DialogDescription>Update the title and category shown on your site.</DialogDescription>
-          </DialogHeader>
-          {editing && (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="photo-title">Title</Label>
-                <Input
-                  id="photo-title"
-                  value={editing.title}
-                  onChange={(e) => setEditing({ ...editing, title: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="photo-category">Category</Label>
-                <AppSelect
-                  value={editing.category}
-                  onValueChange={(v) =>
-                    setEditing({ ...editing, category: v as PhotoCategory })
-                  }
-                  options={CATEGORY_OPTIONS}
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button type="button" variant="outline" onClick={() => setEditing(null)}>
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              className="bg-gradient-ember shadow-glow hover:opacity-90"
-              onClick={() => void saveEdit()}
-            >
-              Save changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <PhotoEditDialog
+        photo={editing}
+        categories={photoCategories}
+        onClose={() => setEditing(null)}
+        onSave={(updated) => saveEdit(updated)}
+      />
     </div>
   );
 }

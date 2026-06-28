@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireAdmin } from "./admin";
+import { isAllowedCategory } from "./categories";
 import { deleteFromFivemanage, uploadToFivemanage } from "./fivemanage";
 import {
   formatShootDate,
-  PHOTO_CATEGORIES,
   photoUrlForProject,
   projectPageWatermarked,
   publicGalleryWatermarked,
@@ -17,19 +17,33 @@ import {
   type PublicProjectDetail,
   type PublicProjectListItem,
 } from "./media-types";
+import { loadSiteSettings } from "./site-settings-data";
 import { getSupabaseServerClient } from "./supabase";
-import { uploadWatermarkedToFivemanage } from "./watermark-image";
+import { syncProjectPaidToBookings } from "./paid-sync";
 
 const PHOTO_SELECT =
   "id, title, category, fivemanage_id, cdn_url, watermarked_cdn_url, original_url, alt_text, sort_order, featured, published, created_at, updated_at";
 
 const PROJECT_SELECT =
-  "id, slug, title, client, shoot_date, category, description, cover_photo_id, published, client_paid_at, public_watermarked, sort_order, created_at, updated_at";
+  "id, slug, title, client, shoot_date, category, description, download_link, cover_photo_id, published, client_paid_at, public_watermarked, sort_order, created_at, updated_at";
 
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
-function isPhotoCategory(value: string): value is PhotoCategory {
-  return (PHOTO_CATEGORIES as readonly string[]).includes(value);
+async function validatePhotoCategory(category: string): Promise<string | null> {
+  const settings = await loadSiteSettings();
+  if (!isAllowedCategory(category, settings.photo_categories)) {
+    return "Invalid category.";
+  }
+  return null;
+}
+
+async function validateProjectCategory(category: string | null): Promise<string | null> {
+  if (category === null) return null;
+  const settings = await loadSiteSettings();
+  if (!isAllowedCategory(category, settings.project_categories)) {
+    return "Invalid category.";
+  }
+  return null;
 }
 
 function extensionForMime(mimeType: string): string {
@@ -126,8 +140,9 @@ export const uploadPhoto = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabase, user } = await requireAdmin();
 
-    if (!isPhotoCategory(data.category)) {
-      return { error: "Invalid category.", photo: null };
+    const categoryError = await validatePhotoCategory(data.category);
+    if (categoryError) {
+      return { error: categoryError, photo: null };
     }
 
     const title = data.title.trim();
@@ -211,8 +226,9 @@ export const updatePhoto = createServerFn({ method: "POST" })
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (data.title !== undefined) patch.title = data.title.trim();
     if (data.category !== undefined) {
-      if (!isPhotoCategory(data.category)) return { error: "Invalid category." };
-      patch.category = data.category;
+      const categoryError = await validatePhotoCategory(data.category);
+      if (categoryError) return { error: categoryError };
+      patch.category = data.category.trim();
     }
     if (data.published !== undefined) patch.published = data.published;
     if (data.featured !== undefined) patch.featured = data.featured;
@@ -270,8 +286,9 @@ export const bulkUpdatePhotos = createServerFn({ method: "POST" })
 
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (data.category !== undefined) {
-      if (!isPhotoCategory(data.category)) return { error: "Invalid category.", updated: 0 };
-      patch.category = data.category;
+      const categoryError = await validatePhotoCategory(data.category);
+      if (categoryError) return { error: categoryError, updated: 0 };
+      patch.category = data.category.trim();
     }
     if (data.published !== undefined) patch.published = data.published;
     if (data.featured !== undefined) patch.featured = data.featured;
@@ -497,6 +514,13 @@ export const createProject = createServerFn({ method: "POST" })
     const title = data.title.trim();
     if (title.length < 1) return { error: "Title is required.", project: null };
 
+    let projectCategory: string | null = null;
+    if (data.category) {
+      const categoryError = await validateProjectCategory(data.category);
+      if (categoryError) return { error: categoryError, project: null };
+      projectCategory = data.category.trim();
+    }
+
     let slug = slugify(title) || "project";
     const { data: existing } = await supabase.from("projects").select("id").eq("slug", slug).maybeSingle();
     if (existing) {
@@ -510,7 +534,7 @@ export const createProject = createServerFn({ method: "POST" })
         slug,
         client: data.client?.trim() || null,
         description: data.description?.trim() || null,
-        category: data.category && isPhotoCategory(data.category) ? data.category : null,
+        category: projectCategory,
         shoot_date: data.shoot_date || null,
       })
       .select(PROJECT_SELECT)
@@ -534,6 +558,7 @@ export const updateProject = createServerFn({ method: "POST" })
       client_paid?: boolean;
       public_watermarked?: boolean;
       sort_order?: number;
+      download_link?: string | null;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -544,15 +569,24 @@ export const updateProject = createServerFn({ method: "POST" })
     if (data.title !== undefined) patch.title = data.title.trim();
     if (data.client !== undefined) patch.client = data.client.trim() || null;
     if (data.description !== undefined) patch.description = data.description.trim() || null;
+    if (data.download_link !== undefined) patch.download_link = data.download_link.trim() || null;
     if (data.category !== undefined) {
-      patch.category = data.category && isPhotoCategory(data.category) ? data.category : null;
+      if (data.category === null) {
+        patch.category = null;
+      } else {
+        const categoryError = await validateProjectCategory(data.category);
+        if (categoryError) return { error: categoryError };
+        patch.category = data.category.trim();
+      }
     }
     if (data.shoot_date !== undefined) patch.shoot_date = data.shoot_date;
     if (data.cover_photo_id !== undefined) patch.cover_photo_id = data.cover_photo_id;
     if (data.published !== undefined) patch.published = data.published;
     if (data.sort_order !== undefined) patch.sort_order = data.sort_order;
     if (data.client_paid !== undefined) {
-      patch.client_paid_at = data.client_paid ? new Date().toISOString() : null;
+      const clientPaidAt = data.client_paid ? new Date().toISOString() : null;
+      patch.client_paid_at = clientPaidAt;
+      await syncProjectPaidToBookings(supabase, data.id, clientPaidAt);
     }
     if (data.public_watermarked !== undefined) patch.public_watermarked = data.public_watermarked;
 

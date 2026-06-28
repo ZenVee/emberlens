@@ -1,13 +1,13 @@
-export const PHOTO_CATEGORIES = [
-  "Portrait",
-  "Automotive",
-  "Event",
-  "Street",
-  "Lifestyle",
-  "Cityscape",
-] as const;
+import {
+  DEFAULT_PHOTO_CATEGORIES,
+  type PhotoCategory,
+} from "./categories";
 
-export type PhotoCategory = (typeof PHOTO_CATEGORIES)[number];
+export type { PhotoCategory } from "./categories";
+export { DEFAULT_PHOTO_CATEGORIES } from "./categories";
+
+/** @deprecated Use settings.photo_categories or DEFAULT_PHOTO_CATEGORIES */
+export const PHOTO_CATEGORIES = DEFAULT_PHOTO_CATEGORIES;
 
 export type DbPhoto = {
   id: string;
@@ -42,6 +42,7 @@ export type DbProject = {
   shoot_date: string | null;
   category: PhotoCategory | null;
   description: string | null;
+  download_link: string | null;
   cover_photo_id: string | null;
   published: boolean;
   client_paid_at: string | null;
