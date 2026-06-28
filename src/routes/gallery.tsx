@@ -4,7 +4,6 @@ import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { PhotoCard } from "@/components/photo-card";
 import { Lightbox } from "@/components/lightbox";
 import { fetchPublishedPhotos } from "@/lib/media";
-import { PHOTO_CATEGORIES } from "@/lib/media-types";
 import { useSiteSettings } from "@/lib/site-settings-queries";
 import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings-types";
 
@@ -22,12 +21,14 @@ export const Route = createFileRoute("/gallery")({
   component: GalleryPage,
 });
 
-const categories = ["All", ...PHOTO_CATEGORIES] as const;
-
 function GalleryPage() {
   const settings = useSiteSettings();
+  const categories = useMemo(
+    () => ["All", ...settings.photo_categories] as const,
+    [settings.photo_categories],
+  );
   const photos = Route.useLoaderData();
-  const [filter, setFilter] = useState<(typeof categories)[number]>("All");
+  const [filter, setFilter] = useState<string>("All");
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const filtered = useMemo(

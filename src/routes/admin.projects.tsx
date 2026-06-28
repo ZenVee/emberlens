@@ -9,9 +9,11 @@ import { AdminLoading } from "@/components/admin-loading";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AppSelect } from "@/components/app-select";
 import { prefetchAdminProject, useAdminProjects } from "@/lib/admin-queries";
-import { PHOTO_CATEGORIES, formatShootDate, type PhotoCategory } from "@/lib/media-types";
+import { categorySelectOptions } from "@/lib/categories";
+import { formatShootDate, type PhotoCategory } from "@/lib/media-types";
 import { createProject, deleteProject, updateProject } from "@/lib/media";
 import { adminProjectsQueryKey } from "@/lib/query-keys";
+import { useSiteSettings } from "@/lib/site-settings-queries";
 
 export const Route = createFileRoute("/admin/projects")({
   head: () => ({ meta: [{ title: "Projects — Ember Lens Studio" }] }),
@@ -25,6 +27,9 @@ function AdminProjects() {
 }
 
 function AdminProjectsList() {
+  const settings = useSiteSettings();
+  const projectCategoryOptions = categorySelectOptions(settings.project_categories);
+
   const { data: projects = [], isPending, isError, error: loadError } = useAdminProjects();
   const queryClient = useQueryClient();
   const [showCreate, setShowCreate] = useState(false);
@@ -36,7 +41,7 @@ function AdminProjectsList() {
     title: "",
     client: "",
     description: "",
-    category: "Portrait" as PhotoCategory,
+    category: settings.project_categories[0] ?? "Portrait",
     shoot_date: "",
   });
 
@@ -240,7 +245,7 @@ function AdminProjectsList() {
                 <AppSelect
                   value={form.category}
                   onValueChange={(v) => setForm({ ...form, category: v as PhotoCategory })}
-                  options={PHOTO_CATEGORIES.map((c) => ({ value: c, label: c }))}
+                  options={projectCategoryOptions}
                 />
               </label>
               <label className="block text-sm">

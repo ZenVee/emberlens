@@ -11,9 +11,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
-import { PHOTO_CATEGORIES, type DbPhoto, type PhotoCategory } from "@/lib/media-types";
-
-const CATEGORY_OPTIONS = PHOTO_CATEGORIES.map((c) => ({ value: c, label: c }));
+import { categorySelectOptions } from "@/lib/categories";
+import { type DbPhoto, type PhotoCategory } from "@/lib/media-types";
 
 type UploadItem = {
   id: string;
@@ -37,6 +36,7 @@ type UploadPhotoPayload = {
 type PhotoUploadModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  categories: readonly string[];
   onUpload: (payload: UploadPhotoPayload) => Promise<{ error: string | null; photo: DbPhoto | null }>;
   onUploaded: (photos: DbPhoto[]) => void;
 };
@@ -81,9 +81,18 @@ function runUploadProgress(
   return () => clearInterval(id);
 }
 
-export function PhotoUploadModal({ open, onOpenChange, onUpload, onUploaded }: PhotoUploadModalProps) {
+export function PhotoUploadModal({
+  open,
+  onOpenChange,
+  categories,
+  onUpload,
+  onUploaded,
+}: PhotoUploadModalProps) {
+  const categoryOptions = categorySelectOptions(categories);
   const [items, setItems] = useState<UploadItem[]>([]);
-  const [defaultCategory, setDefaultCategory] = useState<PhotoCategory>("Portrait");
+  const [defaultCategory, setDefaultCategory] = useState<PhotoCategory>(
+    () => categories[0] ?? "Portrait",
+  );
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -294,7 +303,7 @@ export function PhotoUploadModal({ open, onOpenChange, onUpload, onUploaded }: P
               className="w-40"
               value={defaultCategory}
               onValueChange={(v) => setDefaultCategory(v as PhotoCategory)}
-              options={CATEGORY_OPTIONS}
+              options={categoryOptions}
             />
           </label>
 
@@ -328,7 +337,7 @@ export function PhotoUploadModal({ open, onOpenChange, onUpload, onUploaded }: P
                       value={item.category}
                       disabled={item.status === "uploading" || item.status === "done"}
                       onValueChange={(v) => updateItem(item.id, { category: v as PhotoCategory })}
-                      options={CATEGORY_OPTIONS}
+                      options={categoryOptions}
                     />
                     {item.status === "uploading" && (
                       <div className="space-y-1.5">

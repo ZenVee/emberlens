@@ -1,7 +1,14 @@
 import { queryOptions, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
+import { fetchAdminBookings, fetchAdminBooking } from "./bookings";
 import { fetchAdminPhotos, fetchAdminProject, fetchAdminProjects } from "./media";
-import { adminPhotosQueryKey, adminProjectQueryKey, adminProjectsQueryKey } from "./query-keys";
+import {
+  adminBookingsQueryKey,
+  adminBookingQueryKey,
+  adminPhotosQueryKey,
+  adminProjectQueryKey,
+  adminProjectsQueryKey,
+} from "./query-keys";
 import { siteSettingsQueryOptions } from "./site-settings-queries";
 
 export const adminPhotosQueryOptions = queryOptions({
@@ -44,9 +51,37 @@ export function prefetchAdminDashboard(queryClient: QueryClient) {
   void queryClient.prefetchQuery(adminProjectsQueryOptions);
 }
 
+export const adminBookingsQueryOptions = queryOptions({
+  queryKey: adminBookingsQueryKey,
+  queryFn: () => fetchAdminBookings(),
+});
+
+export function adminBookingQueryOptions(bookingId: string) {
+  return queryOptions({
+    queryKey: adminBookingQueryKey(bookingId),
+    queryFn: () => fetchAdminBooking({ data: { id: bookingId } }),
+  });
+}
+
+export function useAdminBooking(bookingId: string) {
+  return useQuery(adminBookingQueryOptions(bookingId));
+}
+
+export function useAdminBookings() {
+  return useQuery(adminBookingsQueryOptions);
+}
+
+export function prefetchAdminBooking(queryClient: QueryClient, bookingId: string) {
+  void queryClient.prefetchQuery(adminBookingQueryOptions(bookingId));
+}
+
 export function prefetchAdminRoute(queryClient: QueryClient, path: string) {
   if (path.startsWith("/admin/photos")) {
     void queryClient.prefetchQuery(adminPhotosQueryOptions);
+    return;
+  }
+  if (path.startsWith("/admin/bookings")) {
+    void queryClient.prefetchQuery(adminBookingsQueryOptions);
     return;
   }
   if (path.startsWith("/admin/projects")) {

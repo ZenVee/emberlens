@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, Camera, Sparkles, MapPin, Mail } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { AppSelect } from "@/components/app-select";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { PhotoCard } from "@/components/photo-card";
 import { MediaImage } from "@/components/media-image";
+import { categorySelectOptions, DEFAULT_SESSION_TYPES } from "@/lib/categories";
 import { PLACEHOLDER_IMAGE } from "@/lib/placeholder-image";
 import { fetchFeaturedPhotos, fetchPublishedProjects } from "@/lib/media";
 import { publicGalleryWatermarked } from "@/lib/media-types";
@@ -32,17 +33,16 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const SESSION_OPTIONS = [
-  { value: "portrait", label: "Portrait session" },
-  { value: "automotive", label: "Automotive shoot" },
-  { value: "event", label: "Event coverage" },
-  { value: "lifestyle", label: "Lifestyle / Travel" },
-];
-
 function Index() {
   const settings = useSiteSettings();
   const { featuredPhotos, recentProjects } = Route.useLoaderData();
-  const [sessionType, setSessionType] = useState(SESSION_OPTIONS[0].value);
+  const sessionTypeOptions = useMemo(
+    () => categorySelectOptions(settings.session_types),
+    [settings.session_types],
+  );
+  const [sessionType, setSessionType] = useState(
+    () => settings.session_types[0] ?? DEFAULT_SESSION_TYPES[0],
+  );
   const heroSrc = settings.hero_image_url ?? PLACEHOLDER_IMAGE;
 
   return (
@@ -241,7 +241,7 @@ function Index() {
               <AppSelect
                 value={sessionType}
                 onValueChange={setSessionType}
-                options={SESSION_OPTIONS}
+                options={sessionTypeOptions}
               />
             </div>
             <textarea rows={4} className="rounded-xl border border-border bg-background/60 px-4 py-3 text-sm outline-none focus:border-ember sm:col-span-2" placeholder="Tell us about the vibe, location, date…" />

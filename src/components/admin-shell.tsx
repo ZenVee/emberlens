@@ -1,7 +1,7 @@
 import { Link, useRouteContext, useRouter, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
-import { Camera, LayoutDashboard, Images, FolderOpen, CalendarCheck, Settings, LogOut, Bell } from "lucide-react";
+import { Camera, LayoutDashboard, Images, FolderOpen, CalendarCheck, Settings, LogOut, Bell, ExternalLink } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { prefetchAdminRoute } from "@/lib/admin-queries";
@@ -79,7 +79,14 @@ export function AdminShell({ title, subtitle, children }: { title: string; subti
             );
           })}
         </nav>
-        <div className="absolute inset-x-3 bottom-3">
+        <div className="absolute inset-x-3 bottom-3 space-y-1">
+          <Link
+            to="/"
+            onClick={() => setMobileOpen(false)}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          >
+            <ExternalLink className="h-4 w-4" /> View site
+          </Link>
           <button
             type="button"
             onClick={handleSignOut}

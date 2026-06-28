@@ -1,3 +1,9 @@
+import {
+  DEFAULT_PHOTO_CATEGORIES,
+  DEFAULT_PROJECT_CATEGORIES,
+  DEFAULT_SESSION_TYPES,
+} from "./categories";
+
 export type SiteService = {
   title: string;
   description: string;
@@ -52,6 +58,9 @@ export type SiteSettings = {
   services_eyebrow: string;
   services_title: string;
   services: SiteService[];
+  photo_categories: string[];
+  project_categories: string[];
+  session_types: string[];
 };
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
@@ -83,6 +92,9 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   services_eyebrow: "Services",
   services_title: "What we shoot",
   services: DEFAULT_SERVICES,
+  photo_categories: [...DEFAULT_PHOTO_CATEGORIES],
+  project_categories: [...DEFAULT_PROJECT_CATEGORIES],
+  session_types: [...DEFAULT_SESSION_TYPES],
 };
 
 export type SiteSettingsPatch = Partial<

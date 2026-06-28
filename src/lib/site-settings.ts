@@ -1,6 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { deleteFromFivemanage, uploadToFivemanage } from "./fivemanage";
+import {
+  normalizeCategoryList,
+  DEFAULT_PHOTO_CATEGORIES,
+  DEFAULT_PROJECT_CATEGORIES,
+  DEFAULT_SESSION_TYPES,
+} from "./categories";
 import { loadSiteSettings, SITE_SETTINGS_SELECT } from "./site-settings-data";
 import { getSupabaseServerClient } from "./supabase";
 import type { SiteSettings, SiteSettingsPatch } from "./site-settings-types";
@@ -63,6 +69,15 @@ export const updateSiteSettings = createServerFn({ method: "POST" })
         }))
         .filter((service) => service.title.length > 0);
     }
+    if (data.photo_categories !== undefined) {
+      patch.photo_categories = normalizeCategoryList(data.photo_categories, DEFAULT_PHOTO_CATEGORIES);
+    }
+    if (data.project_categories !== undefined) {
+      patch.project_categories = normalizeCategoryList(data.project_categories, DEFAULT_PROJECT_CATEGORIES);
+    }
+    if (data.session_types !== undefined) {
+      patch.session_types = normalizeCategoryList(data.session_types, DEFAULT_SESSION_TYPES);
+    }
     if (data.hero_image_url !== undefined) patch.hero_image_url = data.hero_image_url;
     if (data.hero_image_fivemanage_id !== undefined) patch.hero_image_fivemanage_id = data.hero_image_fivemanage_id;
 
@@ -74,7 +89,7 @@ export const updateSiteSettings = createServerFn({ method: "POST" })
       .single();
 
     if (error) return { error: error.message, settings: null };
-    return { error: null, settings: updated as SiteSettings };
+    return { error: null, settings: await loadSiteSettings() };
   });
 
 export const uploadHeroImage = createServerFn({ method: "POST" })
@@ -125,7 +140,7 @@ export const uploadHeroImage = createServerFn({ method: "POST" })
       await deleteFromFivemanage(existing.hero_image_fivemanage_id).catch(() => undefined);
     }
 
-    return { error: null, settings: updated as SiteSettings };
+    return { error: null, settings: await loadSiteSettings() };
   });
 
 export const removeHeroImage = createServerFn({ method: "POST" }).handler(async () => {
@@ -156,5 +171,5 @@ export const removeHeroImage = createServerFn({ method: "POST" }).handler(async 
     await deleteFromFivemanage(existing.hero_image_fivemanage_id).catch(() => undefined);
   }
 
-  return { error: null, settings: updated as SiteSettings };
+  return { error: null, settings: await loadSiteSettings() };
 });
