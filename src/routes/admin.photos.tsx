@@ -22,17 +22,33 @@ import { AdminLoading } from "@/components/admin-loading";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { AppSelect } from "@/components/app-select";
 import { PhotoEditDialog } from "@/components/photo-edit-dialog";
+import { PhotoFolderNav } from "@/components/photo-folder-nav";
 import { PhotoUploadModal } from "@/components/photo-upload-modal";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { useAdminPhotos, useAdminProjectPhotoIds } from "@/lib/admin-queries";
+import { useAdminPhotoFolders, useAdminPhotos, useAdminProjectPhotoGroups } from "@/lib/admin-queries";
 import { categorySelectOptions } from "@/lib/categories";
 import { type DbPhoto, type PhotoCategory } from "@/lib/media-types";
-import { bulkDeletePhotos, bulkUpdatePhotos, deletePhoto, updatePhoto, uploadPhoto } from "@/lib/media";
-import { adminPhotosQueryKey } from "@/lib/query-keys";
+import {
+  isManualFolderFilter,
+  isProjectFolderFilter,
+  projectIdFromFolderFilter,
+} from "@/lib/photo-folder-utils";
+import {
+  bulkDeletePhotos,
+  bulkUpdatePhotos,
+  createPhotoFolder,
+  deletePhoto,
+  deletePhotoFolder,
+  updatePhoto,
+  updatePhotoFolder,
+  uploadPhoto,
+} from "@/lib/media";
+import { adminPhotoFoldersQueryKey, adminPhotosQueryKey, adminProjectPhotoGroupsQueryKey } from "@/lib/query-keys";
 import { useSiteSettings } from "@/lib/site-settings-queries";
 import { cn } from "@/lib/utils";
+import type { FolderFilter } from "@/lib/photo-folder-utils";
 
 type StatusFilter = "all" | "published" | "draft" | "featured";
 
@@ -42,6 +58,8 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: "draft", label: "Draft" },
   { value: "featured", label: "Featured" },
 ];
+
+const NO_FOLDER = "__none__";
 
 export const Route = createFileRoute("/admin/photos")({
   head: () => ({ meta: [{ title: "Photos — Ember Lens Studio" }] }),
@@ -64,18 +82,33 @@ function AdminPhotos() {
   );
 
   const { data: photos = [], isPending, isError, error: loadError } = useAdminPhotos();
-  const { data: projectPhotoIds = [] } = useAdminProjectPhotoIds();
-  const projectPhotoIdSet = useMemo(() => new Set(projectPhotoIds), [projectPhotoIds]);
+  const { data: folders = [] } = useAdminPhotoFolders();
+  const { data: projectPhotoGroups = [] } = useAdminProjectPhotoGroups();
+  const projectPhotoIdSet = useMemo(() => {
+    const ids = new Set<string>();
+    for (const group of projectPhotoGroups) {
+      for (const id of group.photoIds) ids.add(id);
+    }
+    return ids;
+  }, [projectPhotoGroups]);
+  const photoIdsByProject = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const group of projectPhotoGroups) {
+      map.set(group.projectId, new Set(group.photoIds));
+    }
+    return map;
+  }, [projectPhotoGroups]);
   const queryClient = useQueryClient();
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [folderFilter, setFolderFilter] = useState<FolderFilter>("all");
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<PhotoCategory | "all">("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [includeProjectPhotos, setIncludeProjectPhotos] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkCategory, setBulkCategory] = useState<PhotoCategory>(
     () => photoCategories[0] ?? "Portrait",
   );
+  const [bulkFolder, setBulkFolder] = useState(NO_FOLDER);
   const [bulkWorking, setBulkWorking] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,12 +122,51 @@ function AdminPhotos() {
   const deleteFn = useServerFn(deletePhoto);
   const bulkUpdateFn = useServerFn(bulkUpdatePhotos);
   const bulkDeleteFn = useServerFn(bulkDeletePhotos);
+  const createFolderFn = useServerFn(createPhotoFolder);
+  const updateFolderFn = useServerFn(updatePhotoFolder);
+  const deleteFolderFn = useServerFn(deletePhotoFolder);
+
+  const folderCounts = useMemo(() => {
+    const byFolder: Record<string, number> = {};
+    let unfiled = 0;
+    let all = 0;
+    for (const photo of photos) {
+      if (projectPhotoIdSet.has(photo.id)) continue;
+      all += 1;
+      if (photo.folder_id) {
+        byFolder[photo.folder_id] = (byFolder[photo.folder_id] ?? 0) + 1;
+      } else {
+        unfiled += 1;
+      }
+    }
+    return { all, unfiled, byFolder };
+  }, [photos, projectPhotoIdSet]);
+
+  const projectFolders = useMemo(
+    () =>
+      projectPhotoGroups.map((group) => ({
+        projectId: group.projectId,
+        title: group.title,
+        count: group.photoIds.length,
+      })),
+    [projectPhotoGroups],
+  );
+
+  const folderOptions = useMemo(
+    () => [
+      { value: NO_FOLDER, label: "No folder" },
+      ...folders.map((folder) => ({ value: folder.id, label: folder.name })),
+    ],
+    [folders],
+  );
+
+  const uploadFolderId = isManualFolderFilter(folderFilter) ? folderFilter : null;
 
   const hasActiveFilters =
+    folderFilter !== "all" ||
     query.trim() !== "" ||
     categoryFilter !== "all" ||
-    statusFilter !== "all" ||
-    includeProjectPhotos;
+    statusFilter !== "all";
 
   useAdminPageMeta({
     title: "Photos",
@@ -108,7 +180,17 @@ function AdminPhotos() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return photos.filter((p) => {
-      if (!includeProjectPhotos && projectPhotoIdSet.has(p.id)) return false;
+      if (isProjectFolderFilter(folderFilter)) {
+        const projectIds = photoIdsByProject.get(projectIdFromFolderFilter(folderFilter));
+        if (!projectIds?.has(p.id)) return false;
+      } else if (folderFilter === "unfiled") {
+        if (p.folder_id || projectPhotoIdSet.has(p.id)) return false;
+      } else if (isManualFolderFilter(folderFilter)) {
+        if (p.folder_id !== folderFilter) return false;
+      } else if (projectPhotoIdSet.has(p.id)) {
+        return false;
+      }
+
       if (categoryFilter !== "all" && p.category !== categoryFilter) return false;
       if (statusFilter === "published" && !p.published) return false;
       if (statusFilter === "draft" && p.published) return false;
@@ -118,7 +200,7 @@ function AdminPhotos() {
       }
       return true;
     });
-  }, [photos, query, categoryFilter, statusFilter, includeProjectPhotos, projectPhotoIdSet]);
+  }, [photos, query, categoryFilter, statusFilter, projectPhotoIdSet, photoIdsByProject, folderFilter]);
 
   const filteredIds = useMemo(() => filtered.map((p) => p.id), [filtered]);
   const allFilteredSelected =
@@ -152,10 +234,40 @@ function AdminPhotos() {
   }
 
   function clearFilters() {
+    setFolderFilter("all");
     setQuery("");
     setCategoryFilter("all");
     setStatusFilter("all");
-    setIncludeProjectPhotos(false);
+  }
+
+  async function handleCreateFolder(name: string) {
+    const result = await createFolderFn({ data: { name } });
+    if (result.error || !result.folder) return result.error ?? "Could not create folder.";
+    queryClient.setQueryData(adminPhotoFoldersQueryKey, (prev) => [...(prev ?? []), result.folder!]);
+    setFolderFilter(result.folder!.id);
+    return null;
+  }
+
+  async function handleRenameFolder(id: string, name: string) {
+    const result = await updateFolderFn({ data: { id, name } });
+    if (result.error) return result.error;
+    queryClient.setQueryData(adminPhotoFoldersQueryKey, (prev) =>
+      (prev ?? []).map((folder) => (folder.id === id ? { ...folder, name: name.trim() } : folder)),
+    );
+    return null;
+  }
+
+  async function handleDeleteFolder(id: string) {
+    const result = await deleteFolderFn({ data: { id } });
+    if (result.error) return result.error;
+    queryClient.setQueryData(adminPhotoFoldersQueryKey, (prev) =>
+      (prev ?? []).filter((folder) => folder.id !== id),
+    );
+    updatePhotos((prev) =>
+      prev.map((photo) => (photo.folder_id === id ? { ...photo, folder_id: null } : photo)),
+    );
+    if (folderFilter === id) setFolderFilter("all");
+    return null;
   }
 
   async function togglePublished(photo: DbPhoto) {
@@ -206,6 +318,7 @@ function AdminPhotos() {
       return;
     }
     updatePhotos((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+    void queryClient.invalidateQueries({ queryKey: adminProjectPhotoGroupsQueryKey });
     setSelected((prev) => {
       const next = new Set(prev);
       next.delete(deleteTarget.id);
@@ -226,6 +339,7 @@ function AdminPhotos() {
       return;
     }
     updatePhotos((prev) => prev.filter((p) => !selected.has(p.id)));
+    void queryClient.invalidateQueries({ queryKey: adminProjectPhotoGroupsQueryKey });
     clearSelection();
     setBulkDeleteOpen(false);
   }
@@ -235,6 +349,7 @@ function AdminPhotos() {
     published?: boolean;
     featured?: boolean;
     public_watermarked?: boolean;
+    folder_id?: string | null;
   }) {
     const ids = [...selected];
     if (ids.length === 0) return;
@@ -258,6 +373,7 @@ function AdminPhotos() {
         title: updated.title,
         category: updated.category,
         public_watermarked: updated.public_watermarked,
+        folder_id: updated.folder_id,
       },
     });
     if (result.error) {
@@ -267,7 +383,19 @@ function AdminPhotos() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-6">
+      <PhotoFolderNav
+        folders={folders}
+        projectFolders={projectFolders}
+        active={folderFilter}
+        counts={folderCounts}
+        onSelect={setFolderFilter}
+        onCreate={handleCreateFolder}
+        onRename={handleRenameFolder}
+        onDelete={handleDeleteFolder}
+      />
+
+      <div className="min-w-0 space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           {photos.length} photo{photos.length === 1 ? "" : "s"}
@@ -312,19 +440,6 @@ function AdminPhotos() {
                 </button>
               ))}
             </div>
-
-            <button
-              type="button"
-              onClick={() => setIncludeProjectPhotos((v) => !v)}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                includeProjectPhotos
-                  ? "bg-gradient-ember text-primary-foreground shadow-glow"
-                  : "bg-secondary/80 text-muted-foreground hover:text-foreground",
-              )}
-            >
-              In projects
-            </button>
 
             <AppSelect
               className="w-[11rem]"
@@ -527,6 +642,26 @@ function AdminPhotos() {
             icon={Lock}
             label="Unwatermark"
           />
+          <AppSelect
+            size="sm"
+            className="w-[8.5rem]"
+            value={bulkFolder}
+            onValueChange={setBulkFolder}
+            options={folderOptions}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={bulkWorking}
+            onClick={() =>
+              void runBulkUpdate({
+                folder_id: bulkFolder === NO_FOLDER ? null : bulkFolder,
+              })
+            }
+          >
+            Move to folder
+          </Button>
           <div className="hidden h-5 w-px bg-border sm:block" />
           <AppSelect
             size="sm"
@@ -571,7 +706,7 @@ function AdminPhotos() {
         open={uploadOpen}
         onOpenChange={setUploadOpen}
         categories={photoCategories}
-        onUpload={(data) => uploadFn({ data })}
+        onUpload={(data) => uploadFn({ data: { ...data, folderId: uploadFolderId } })}
         onUploaded={(uploaded) => {
           setError(null);
           updatePhotos((prev) => [...uploaded, ...prev]);
@@ -611,9 +746,11 @@ function AdminPhotos() {
       <PhotoEditDialog
         photo={editing}
         categories={photoCategories}
+        folders={folders}
         onClose={() => setEditing(null)}
         onSave={(updated) => saveEdit(updated)}
       />
+      </div>
     </div>
   );
 }

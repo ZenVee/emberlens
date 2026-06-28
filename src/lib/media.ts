@@ -11,7 +11,9 @@ import {
   slugify,
   toPublicPhoto,
   type DbPhoto,
+  type DbPhotoFolder,
   type DbProject,
+  type AdminProjectPhotoGroup,
   type PhotoCategory,
   type PublicPhoto,
   type PublicProjectDetail,
@@ -23,7 +25,9 @@ import { syncProjectPaidToBookings } from "./paid-sync";
 import { uploadWatermarkedToFivemanage } from "./watermark-image";
 
 const PHOTO_SELECT =
-  "id, title, category, fivemanage_id, cdn_url, watermarked_cdn_url, original_url, alt_text, sort_order, featured, published, public_watermarked, created_at, updated_at";
+  "id, title, category, fivemanage_id, cdn_url, watermarked_cdn_url, original_url, alt_text, sort_order, featured, published, public_watermarked, folder_id, created_at, updated_at";
+
+const FOLDER_SELECT = "id, name, sort_order, created_at, updated_at";
 
 const PROJECT_SELECT =
   "id, slug, title, client, shoot_date, category, description, download_link, cover_photo_id, published, client_paid_at, public_watermarked, sort_order, created_at, updated_at";
@@ -94,15 +98,134 @@ export const fetchAdminPhotos = createServerFn({ method: "GET" }).handler(async 
   return data as DbPhoto[];
 });
 
-export const fetchAdminProjectPhotoIds = createServerFn({ method: "GET" }).handler(
-  async (): Promise<string[]> => {
+export const fetchAdminProjectPhotoGroups = createServerFn({ method: "GET" }).handler(
+  async (): Promise<AdminProjectPhotoGroup[]> => {
     await requireAdmin();
     const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase.from("project_photos").select("photo_id");
+    const { data, error } = await supabase
+      .from("projects")
+      .select("id, title, project_photos(photo_id)")
+      .order("created_at", { ascending: false });
+
     if (error) throw error;
-    return [...new Set((data ?? []).map((row) => row.photo_id as string))];
+
+    return (data ?? [])
+      .map((row) => ({
+        projectId: row.id as string,
+        title: row.title as string,
+        photoIds: ((row.project_photos as { photo_id: string }[]) ?? []).map((link) => link.photo_id),
+      }))
+      .filter((group) => group.photoIds.length > 0);
   },
 );
+
+async function resolveFolderId(
+  supabase: ReturnType<typeof getSupabaseServerClient>,
+  folderId: string | null | undefined,
+): Promise<string | null | { error: string }> {
+  const id = folderId?.trim();
+  if (!id) return null;
+
+  const { data, error } = await supabase.from("photo_folders").select("id").eq("id", id).maybeSingle();
+  if (error) return { error: error.message };
+  if (!data) return { error: "Folder not found." };
+  return id;
+}
+
+export const fetchAdminPhotoFolders = createServerFn({ method: "GET" }).handler(
+  async (): Promise<DbPhotoFolder[]> => {
+    await requireAdmin();
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("photo_folders")
+      .select(FOLDER_SELECT)
+      .order("sort_order", { ascending: true })
+      .order("name", { ascending: true });
+
+    if (error) throw error;
+    return data as DbPhotoFolder[];
+  },
+);
+
+export const createPhotoFolder = createServerFn({ method: "POST" })
+  .validator((data: { name: string }) => data)
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const supabase = getSupabaseServerClient();
+    const name = data.name.trim();
+    if (name.length < 1) return { error: "Folder name is required.", folder: null };
+
+    const { data: maxRow } = await supabase
+      .from("photo_folders")
+      .select("sort_order")
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const { data: folder, error } = await supabase
+      .from("photo_folders")
+      .insert({ name, sort_order: (maxRow?.sort_order ?? -1) + 1 })
+      .select(FOLDER_SELECT)
+      .single();
+
+    if (error) return { error: error.message, folder: null };
+    return { error: null, folder: folder as DbPhotoFolder };
+  });
+
+export const updatePhotoFolder = createServerFn({ method: "POST" })
+  .validator((data: { id: string; name?: string; sort_order?: number }) => data)
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const supabase = getSupabaseServerClient();
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (data.name !== undefined) {
+      const name = data.name.trim();
+      if (name.length < 1) return { error: "Folder name is required." };
+      patch.name = name;
+    }
+    if (data.sort_order !== undefined) patch.sort_order = data.sort_order;
+
+    const { error } = await supabase.from("photo_folders").update(patch).eq("id", data.id);
+    if (error) return { error: error.message };
+    return { error: null };
+  });
+
+export const deletePhotoFolder = createServerFn({ method: "POST" })
+  .validator((data: { id: string }) => data)
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const supabase = getSupabaseServerClient();
+    const { error } = await supabase.from("photo_folders").delete().eq("id", data.id);
+    if (error) return { error: error.message };
+    return { error: null };
+  });
+
+async function deletePhotosWithAssets(
+  supabase: ReturnType<typeof getSupabaseServerClient>,
+  photoIds: string[],
+): Promise<{ error: string | null }> {
+  if (photoIds.length === 0) return { error: null };
+
+  const { data: photos, error: fetchError } = await supabase
+    .from("photos")
+    .select("id, fivemanage_id")
+    .in("id", photoIds);
+
+  if (fetchError) return { error: fetchError.message };
+
+  const { error } = await supabase.from("photos").delete().in("id", photoIds);
+  if (error) return { error: error.message };
+
+  await Promise.all(
+    (photos ?? []).map((photo) =>
+      deleteFromFivemanage(photo.fivemanage_id).catch((err) => {
+        console.error("Fivemanage delete failed:", err);
+      }),
+    ),
+  );
+
+  return { error: null };
+}
 
 async function linkPhotoToProject(
   supabase: ReturnType<typeof getSupabaseServerClient>,
@@ -146,6 +269,7 @@ export const uploadPhoto = createServerFn({ method: "POST" })
       title: string;
       category: PhotoCategory;
       projectId?: string;
+      folderId?: string | null;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -155,6 +279,12 @@ export const uploadPhoto = createServerFn({ method: "POST" })
     if (categoryError) {
       return { error: categoryError, photo: null };
     }
+
+    const folderResult = await resolveFolderId(supabase, data.folderId);
+    if (folderResult !== null && typeof folderResult === "object") {
+      return { error: folderResult.error, photo: null };
+    }
+    const resolvedFolderId = typeof folderResult === "string" ? folderResult : null;
 
     const title = data.title.trim();
     if (title.length < 1) {
@@ -196,6 +326,7 @@ export const uploadPhoto = createServerFn({ method: "POST" })
         original_url: cleanUpload.originalUrl ?? null,
         watermarked_cdn_url: watermarkedCdnUrl,
         uploaded_by: user.id,
+        folder_id: resolvedFolderId,
       })
       .select(PHOTO_SELECT)
       .single();
@@ -228,6 +359,7 @@ export const updatePhoto = createServerFn({ method: "POST" })
       published?: boolean;
       featured?: boolean;
       public_watermarked?: boolean;
+      folder_id?: string | null;
       sort_order?: number;
     }) => data,
   )
@@ -245,6 +377,13 @@ export const updatePhoto = createServerFn({ method: "POST" })
     if (data.published !== undefined) patch.published = data.published;
     if (data.featured !== undefined) patch.featured = data.featured;
     if (data.public_watermarked !== undefined) patch.public_watermarked = data.public_watermarked;
+    if (data.folder_id !== undefined) {
+      const folderResult = await resolveFolderId(supabase, data.folder_id);
+      if (folderResult !== null && typeof folderResult === "object") {
+        return { error: folderResult.error };
+      }
+      patch.folder_id = typeof folderResult === "string" ? folderResult : null;
+    }
     if (data.sort_order !== undefined) patch.sort_order = data.sort_order;
 
     const { error } = await supabase.from("photos").update(patch).eq("id", data.id);
@@ -285,6 +424,7 @@ export const bulkUpdatePhotos = createServerFn({ method: "POST" })
       published?: boolean;
       featured?: boolean;
       public_watermarked?: boolean;
+      folder_id?: string | null;
     }) => data,
   )
   .handler(async ({ data }) => {
@@ -307,6 +447,13 @@ export const bulkUpdatePhotos = createServerFn({ method: "POST" })
     if (data.published !== undefined) patch.published = data.published;
     if (data.featured !== undefined) patch.featured = data.featured;
     if (data.public_watermarked !== undefined) patch.public_watermarked = data.public_watermarked;
+    if (data.folder_id !== undefined) {
+      const folderResult = await resolveFolderId(supabase, data.folder_id);
+      if (folderResult !== null && typeof folderResult === "object") {
+        return { error: folderResult.error, updated: 0 };
+      }
+      patch.folder_id = typeof folderResult === "string" ? folderResult : null;
+    }
 
     if (Object.keys(patch).length === 1) {
       return { error: "No changes to apply.", updated: 0 };
@@ -581,10 +728,10 @@ export const updateProject = createServerFn({ method: "POST" })
     const supabase = getSupabaseServerClient();
 
     const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (data.title !== undefined) patch.title = data.title.trim();
-    if (data.client !== undefined) patch.client = data.client.trim() || null;
-    if (data.description !== undefined) patch.description = data.description.trim() || null;
-    if (data.download_link !== undefined) patch.download_link = data.download_link.trim() || null;
+    if (data.title !== undefined) patch.title = data.title?.trim() ?? "";
+    if (data.client !== undefined) patch.client = data.client?.trim() || null;
+    if (data.description !== undefined) patch.description = data.description?.trim() || null;
+    if (data.download_link !== undefined) patch.download_link = data.download_link?.trim() || null;
     if (data.category !== undefined) {
       if (data.category === null) {
         patch.category = null;
@@ -637,6 +784,18 @@ export const deleteProject = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     await requireAdmin();
     const supabase = getSupabaseServerClient();
+
+    const { data: links, error: linksError } = await supabase
+      .from("project_photos")
+      .select("photo_id")
+      .eq("project_id", data.id);
+
+    if (linksError) return { error: linksError.message };
+
+    const photoIds = [...new Set((links ?? []).map((row) => row.photo_id as string))];
+    const deletePhotosResult = await deletePhotosWithAssets(supabase, photoIds);
+    if (deletePhotosResult.error) return deletePhotosResult;
+
     const { error } = await supabase.from("projects").delete().eq("id", data.id);
     if (error) return { error: error.message };
     return { error: null };

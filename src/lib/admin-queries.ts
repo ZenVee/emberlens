@@ -1,12 +1,13 @@
 import { queryOptions, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { fetchAdminBookings, fetchAdminBooking } from "./bookings";
-import { fetchAdminPhotos, fetchAdminProject, fetchAdminProjectPhotoIds, fetchAdminProjects } from "./media";
+import { fetchAdminPhotos, fetchAdminPhotoFolders, fetchAdminProject, fetchAdminProjectPhotoGroups, fetchAdminProjects } from "./media";
 import {
   adminBookingsQueryKey,
   adminBookingQueryKey,
+  adminPhotoFoldersQueryKey,
   adminPhotosQueryKey,
-  adminProjectPhotoIdsQueryKey,
+  adminProjectPhotoGroupsQueryKey,
   adminProjectQueryKey,
   adminProjectsQueryKey,
 } from "./query-keys";
@@ -17,13 +18,22 @@ export const adminPhotosQueryOptions = queryOptions({
   queryFn: () => fetchAdminPhotos(),
 });
 
-export const adminProjectPhotoIdsQueryOptions = queryOptions({
-  queryKey: adminProjectPhotoIdsQueryKey,
-  queryFn: () => fetchAdminProjectPhotoIds(),
+export const adminPhotoFoldersQueryOptions = queryOptions({
+  queryKey: adminPhotoFoldersQueryKey,
+  queryFn: () => fetchAdminPhotoFolders(),
 });
 
-export function useAdminProjectPhotoIds() {
-  return useQuery(adminProjectPhotoIdsQueryOptions);
+export function useAdminPhotoFolders() {
+  return useQuery(adminPhotoFoldersQueryOptions);
+}
+
+export const adminProjectPhotoGroupsQueryOptions = queryOptions({
+  queryKey: adminProjectPhotoGroupsQueryKey,
+  queryFn: () => fetchAdminProjectPhotoGroups(),
+});
+
+export function useAdminProjectPhotoGroups() {
+  return useQuery(adminProjectPhotoGroupsQueryOptions);
 }
 
 export const adminProjectsQueryOptions = queryOptions({
@@ -59,6 +69,7 @@ export function useAdminSiteSettings() {
 export function prefetchAdminDashboard(queryClient: QueryClient) {
   void queryClient.prefetchQuery(adminPhotosQueryOptions);
   void queryClient.prefetchQuery(adminProjectsQueryOptions);
+  void queryClient.prefetchQuery(adminBookingsQueryOptions);
 }
 
 export const adminBookingsQueryOptions = queryOptions({
@@ -88,6 +99,7 @@ export function prefetchAdminBooking(queryClient: QueryClient, bookingId: string
 export function prefetchAdminRoute(queryClient: QueryClient, path: string) {
   if (path.startsWith("/admin/photos")) {
     void queryClient.prefetchQuery(adminPhotosQueryOptions);
+    void queryClient.prefetchQuery(adminProjectPhotoGroupsQueryOptions);
     return;
   }
   if (path.startsWith("/admin/bookings")) {

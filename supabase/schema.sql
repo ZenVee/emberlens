@@ -54,6 +54,14 @@ as $$
   );
 $$;
 
+create table public.photo_folders (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  sort_order int not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table public.photos (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -67,10 +75,13 @@ create table public.photos (
   featured boolean not null default false,
   published boolean not null default false,
   public_watermarked boolean not null default false,
+  folder_id uuid references public.photo_folders (id) on delete set null,
   uploaded_by uuid references auth.users (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create index photos_folder_id_idx on public.photos (folder_id);
 
 create table public.projects (
   id uuid primary key default gen_random_uuid(),
@@ -103,6 +114,7 @@ create index projects_published_idx on public.projects (published, sort_order);
 create index project_photos_project_sort_idx on public.project_photos (project_id, sort_order);
 
 alter table public.photos enable row level security;
+alter table public.photo_folders enable row level security;
 alter table public.projects enable row level security;
 alter table public.project_photos enable row level security;
 
@@ -121,6 +133,12 @@ create policy "Public can view published photos or project photos"
 
 create policy "Admins manage photos"
   on public.photos
+  for all
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy "Admins manage photo folders"
+  on public.photo_folders
   for all
   using (public.is_admin())
   with check (public.is_admin());
@@ -149,7 +167,7 @@ create policy "Admins manage project photos"
 
 -- Bookings
 
-create type public.booking_status as enum ('Pending', 'Confirmed', 'Declined');
+create type public.booking_status as enum ('Pending', 'Confirmed', 'Declined', 'Completed');
 
 create table public.bookings (
   id uuid primary key default gen_random_uuid(),

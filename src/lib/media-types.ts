@@ -9,6 +9,20 @@ export { DEFAULT_PHOTO_CATEGORIES } from "./categories";
 /** @deprecated Use settings.photo_categories or DEFAULT_PHOTO_CATEGORIES */
 export const PHOTO_CATEGORIES = DEFAULT_PHOTO_CATEGORIES;
 
+export type DbPhotoFolder = {
+  id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AdminProjectPhotoGroup = {
+  projectId: string;
+  title: string;
+  photoIds: string[];
+};
+
 export type DbPhoto = {
   id: string;
   title: string;
@@ -22,6 +36,7 @@ export type DbPhoto = {
   featured: boolean;
   published: boolean;
   public_watermarked: boolean;
+  folder_id: string | null;
   created_at: string;
   updated_at: string;
 };

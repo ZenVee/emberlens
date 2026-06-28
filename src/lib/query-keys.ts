@@ -1,6 +1,7 @@
 export const authUserQueryKey = ["auth", "user"] as const;
 export const adminPhotosQueryKey = ["admin", "photos"] as const;
-export const adminProjectPhotoIdsQueryKey = ["admin", "project-photo-ids"] as const;
+export const adminPhotoFoldersQueryKey = ["admin", "photo-folders"] as const;
+export const adminProjectPhotoGroupsQueryKey = ["admin", "project-photo-groups"] as const;
 export const adminProjectsQueryKey = ["admin", "projects"] as const;
 export const adminBookingsQueryKey = ["admin", "bookings"] as const;
 export const adminProjectQueryKey = (id: string) => ["admin", "project", id] as const;
