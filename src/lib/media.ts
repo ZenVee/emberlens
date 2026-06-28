@@ -93,6 +93,16 @@ export const fetchAdminPhotos = createServerFn({ method: "GET" }).handler(async 
   return data as DbPhoto[];
 });
 
+export const fetchAdminProjectPhotoIds = createServerFn({ method: "GET" }).handler(
+  async (): Promise<string[]> => {
+    await requireAdmin();
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase.from("project_photos").select("photo_id");
+    if (error) throw error;
+    return [...new Set((data ?? []).map((row) => row.photo_id as string))];
+  },
+);
+
 async function linkPhotoToProject(
   supabase: ReturnType<typeof getSupabaseServerClient>,
   projectId: string,

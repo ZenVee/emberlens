@@ -25,7 +25,7 @@ import { PhotoUploadModal } from "@/components/photo-upload-modal";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { useAdminPhotos } from "@/lib/admin-queries";
+import { useAdminPhotos, useAdminProjectPhotoIds } from "@/lib/admin-queries";
 import { categorySelectOptions } from "@/lib/categories";
 import { type DbPhoto, type PhotoCategory } from "@/lib/media-types";
 import { bulkDeletePhotos, bulkUpdatePhotos, deletePhoto, updatePhoto, uploadPhoto } from "@/lib/media";
@@ -63,11 +63,14 @@ function AdminPhotos() {
   );
 
   const { data: photos = [], isPending, isError, error: loadError } = useAdminPhotos();
+  const { data: projectPhotoIds = [] } = useAdminProjectPhotoIds();
+  const projectPhotoIdSet = useMemo(() => new Set(projectPhotoIds), [projectPhotoIds]);
   const queryClient = useQueryClient();
   const [view, setView] = useState<"grid" | "list">("grid");
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<PhotoCategory | "all">("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [includeProjectPhotos, setIncludeProjectPhotos] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkCategory, setBulkCategory] = useState<PhotoCategory>(
     () => photoCategories[0] ?? "Portrait",
@@ -87,7 +90,10 @@ function AdminPhotos() {
   const bulkDeleteFn = useServerFn(bulkDeletePhotos);
 
   const hasActiveFilters =
-    query.trim() !== "" || categoryFilter !== "all" || statusFilter !== "all";
+    query.trim() !== "" ||
+    categoryFilter !== "all" ||
+    statusFilter !== "all" ||
+    includeProjectPhotos;
 
   useAdminPageMeta({
     title: "Photos",
@@ -101,6 +107,7 @@ function AdminPhotos() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return photos.filter((p) => {
+      if (!includeProjectPhotos && projectPhotoIdSet.has(p.id)) return false;
       if (categoryFilter !== "all" && p.category !== categoryFilter) return false;
       if (statusFilter === "published" && !p.published) return false;
       if (statusFilter === "draft" && p.published) return false;
@@ -110,7 +117,7 @@ function AdminPhotos() {
       }
       return true;
     });
-  }, [photos, query, categoryFilter, statusFilter]);
+  }, [photos, query, categoryFilter, statusFilter, includeProjectPhotos, projectPhotoIdSet]);
 
   const filteredIds = useMemo(() => filtered.map((p) => p.id), [filtered]);
   const allFilteredSelected =
@@ -147,6 +154,7 @@ function AdminPhotos() {
     setQuery("");
     setCategoryFilter("all");
     setStatusFilter("all");
+    setIncludeProjectPhotos(false);
   }
 
   async function togglePublished(photo: DbPhoto) {
@@ -282,6 +290,19 @@ function AdminPhotos() {
                 </button>
               ))}
             </div>
+
+            <button
+              type="button"
+              onClick={() => setIncludeProjectPhotos((v) => !v)}
+              className={cn(
+                "rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                includeProjectPhotos
+                  ? "bg-gradient-ember text-primary-foreground shadow-glow"
+                  : "bg-secondary/80 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              In projects
+            </button>
 
             <AppSelect
               className="w-[11rem]"

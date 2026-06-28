@@ -1,11 +1,12 @@
 import { queryOptions, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { fetchAdminBookings, fetchAdminBooking } from "./bookings";
-import { fetchAdminPhotos, fetchAdminProject, fetchAdminProjects } from "./media";
+import { fetchAdminPhotos, fetchAdminProject, fetchAdminProjectPhotoIds, fetchAdminProjects } from "./media";
 import {
   adminBookingsQueryKey,
   adminBookingQueryKey,
   adminPhotosQueryKey,
+  adminProjectPhotoIdsQueryKey,
   adminProjectQueryKey,
   adminProjectsQueryKey,
 } from "./query-keys";
@@ -15,6 +16,15 @@ export const adminPhotosQueryOptions = queryOptions({
   queryKey: adminPhotosQueryKey,
   queryFn: () => fetchAdminPhotos(),
 });
+
+export const adminProjectPhotoIdsQueryOptions = queryOptions({
+  queryKey: adminProjectPhotoIdsQueryKey,
+  queryFn: () => fetchAdminProjectPhotoIds(),
+});
+
+export function useAdminProjectPhotoIds() {
+  return useQuery(adminProjectPhotoIdsQueryOptions);
+}
 
 export const adminProjectsQueryOptions = queryOptions({
   queryKey: adminProjectsQueryKey,
