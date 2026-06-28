@@ -117,7 +117,7 @@ export const Route = createRootRouteWithContext<{
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Ember Lens — Los Santos Photography" },
-      { name: "description", content: "Ember Lens is a cinematic photography studio capturing Los Santos — one frame at a time." },
+      { name: "description", content: "Ember Lens is a photography studio capturing Los Santos — one frame at a time." },
       { property: "og:title", content: "Ember Lens — Los Santos Photography" },
       { property: "og:description", content: "Cinematic portrait, event, automotive, and lifestyle photography in Los Santos." },
       { property: "og:type", content: "website" },
