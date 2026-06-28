@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import { decode as decodeWebp } from "@jsquash/webp";
 import { Image } from "imagescript";
 
 import { uploadToFivemanage } from "./fivemanage";
@@ -32,11 +33,37 @@ function fitWithinMaxDimension(image: Image, maxPx: number): Image {
   );
 }
 
+function isWebpBuffer(buffer: Buffer): boolean {
+  return (
+    buffer.length >= 12 &&
+    buffer.toString("ascii", 0, 4) === "RIFF" &&
+    buffer.toString("ascii", 8, 12) === "WEBP"
+  );
+}
+
+async function decodeImageBuffer(imageBuffer: Buffer): Promise<Image> {
+  try {
+    return await Image.decode(imageBuffer);
+  } catch (error) {
+    if (!isWebpBuffer(imageBuffer)) throw error;
+
+    const imageData = await decodeWebp(
+      imageBuffer.buffer.slice(
+        imageBuffer.byteOffset,
+        imageBuffer.byteOffset + imageBuffer.byteLength,
+      ),
+    );
+    const image = new Image(imageData.width, imageData.height);
+    image.bitmap.set(imageData.data);
+    return image;
+  }
+}
+
 export async function applyStudioWatermark(
   imageBuffer: Buffer,
   mimeType = "image/jpeg",
 ): Promise<{ buffer: Buffer; mimeType: string }> {
-  const decoded = await Image.decode(imageBuffer);
+  const decoded = await decodeImageBuffer(imageBuffer);
   const image = fitWithinMaxDimension(decoded, MAX_WATERMARK_PX);
   const overlay = await getWatermarkOverlay();
 

@@ -1,4 +1,4 @@
-export const BOOKING_STATUSES = ["Pending", "Confirmed", "Declined"] as const;
+export const BOOKING_STATUSES = ["Pending", "Confirmed", "Declined", "Completed"] as const;
 
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
 

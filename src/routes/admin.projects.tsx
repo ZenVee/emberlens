@@ -12,7 +12,7 @@ import { prefetchAdminProject, useAdminProjects } from "@/lib/admin-queries";
 import { categorySelectOptions } from "@/lib/categories";
 import { formatShootDate, type PhotoCategory } from "@/lib/media-types";
 import { createProject, deleteProject, updateProject } from "@/lib/media";
-import { adminProjectsQueryKey } from "@/lib/query-keys";
+import { adminPhotosQueryKey, adminProjectPhotoGroupsQueryKey, adminProjectsQueryKey } from "@/lib/query-keys";
 import { useSiteSettings } from "@/lib/site-settings-queries";
 
 export const Route = createFileRoute("/admin/projects")({
@@ -101,6 +101,8 @@ function AdminProjectsList() {
       return;
     }
     updateProjects((prev) => prev.filter((p) => p.id !== deleteTarget.id));
+    void queryClient.invalidateQueries({ queryKey: adminPhotosQueryKey });
+    void queryClient.invalidateQueries({ queryKey: adminProjectPhotoGroupsQueryKey });
     setDeleteTarget(null);
   }
 
@@ -221,8 +223,8 @@ function AdminProjectsList() {
         title="Delete project"
         description={
           deleteTarget
-            ? `Delete "${deleteTarget.title}"? This cannot be undone.`
-            : "Delete this project? This cannot be undone."
+            ? `Delete "${deleteTarget.title}" and all gallery photos in this project? This cannot be undone.`
+            : "Delete this project and its gallery photos? This cannot be undone."
         }
         confirmLabel="Delete"
         destructive

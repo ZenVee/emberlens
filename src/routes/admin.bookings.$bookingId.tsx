@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Camera,
   Check,
+  CircleCheck,
   Clock,
   ExternalLink,
   FolderOpen,
@@ -771,6 +772,13 @@ function StatusPicker({
       idle: "border-border/60 bg-card/40 text-muted-foreground hover:border-ember/40 hover:bg-ember/10 hover:text-ember",
     },
     {
+      status: "Completed",
+      label: "Completed",
+      icon: CircleCheck,
+      active: "border-emerald-500/50 bg-emerald-500/15 text-emerald-400 shadow-[0_0_20px_oklch(0.72_0.17_155/0.2)]",
+      idle: "border-border/60 bg-card/40 text-muted-foreground hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-400",
+    },
+    {
       status: "Declined",
       label: "Declined",
       icon: X,
@@ -780,7 +788,7 @@ function StatusPicker({
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-2 sm:max-w-md">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:max-w-lg">
       {options.map(({ status, label, icon: Icon, active, idle }) => {
         const selected = value === status;
         return (

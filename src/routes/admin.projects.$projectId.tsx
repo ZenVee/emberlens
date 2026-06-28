@@ -2,17 +2,27 @@ import { createFileRoute, Link, notFound, useParams } from "@tanstack/react-rout
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Check, Copy, Eye, EyeOff, Lock, Trash2, Upload } from "lucide-react";
-import { useState, type ComponentType } from "react";
+import { useCallback, useMemo, useRef, useState, type ComponentType } from "react";
 
 import { useAdminPageMeta } from "@/components/admin-page-meta";
 import { AdminLoading } from "@/components/admin-loading";
 import { AppSelect } from "@/components/app-select";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PhotoUploadModal } from "@/components/photo-upload-modal";
+import { SaveStatus } from "@/components/save-status";
+import { useAutoSave } from "@/hooks/use-auto-save";
 import { useAdminProject } from "@/lib/admin-queries";
 import { categorySelectOptions } from "@/lib/categories";
 import { type DbPhoto, type DbProject, type PhotoCategory } from "@/lib/media-types";
-import { setProjectPhotos, updateProject, uploadPhoto } from "@/lib/media";
-import { adminPhotosQueryKey, adminBookingsQueryKey, adminBookingQueryKey } from "@/lib/query-keys";
+import { deletePhoto, setProjectPhotos, updateProject, uploadPhoto } from "@/lib/media";
+import {
+  adminPhotosQueryKey,
+  adminBookingsQueryKey,
+  adminBookingQueryKey,
+  adminProjectQueryKey,
+  adminProjectsQueryKey,
+  adminProjectPhotoGroupsQueryKey,
+} from "@/lib/query-keys";
 import type { DbBooking } from "@/lib/bookings-types";
 import { useSiteSettings } from "@/lib/site-settings-queries";
 
@@ -21,6 +31,12 @@ const NO_CATEGORY = "__none__";
 type AdminProjectData = {
   project: DbProject;
   assignedPhotos: { sort_order: number; photo: DbPhoto }[];
+};
+
+type ProjectSaveState = {
+  project: DbProject;
+  coverId: string;
+  photoIds: string[];
 };
 
 export const Route = createFileRoute("/admin/projects/$projectId")({
@@ -80,80 +96,152 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
   const [photos, setPhotos] = useState<DbPhoto[]>(() =>
     initial.assignedPhotos.map((item) => item.photo),
   );
+  const photosRef = useRef(photos);
+  photosRef.current = photos;
   const [coverId, setCoverId] = useState(initial.project.cover_photo_id ?? "");
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<DbPhoto | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const updateFn = useServerFn(updateProject);
   const setPhotosFn = useServerFn(setProjectPhotos);
   const uploadFn = useServerFn(uploadPhoto);
+  const deleteFn = useServerFn(deletePhoto);
 
-  async function saveAll() {
-    setSaving(true);
-    setError(null);
-    setMessage(null);
+  const saveState = useMemo<ProjectSaveState>(
+    () => ({
+      project,
+      coverId,
+      photoIds: photos.map((photo) => photo.id),
+    }),
+    [project, coverId, photos],
+  );
 
-    const updateResult = await updateFn({
-      data: {
-        id: project.id,
-        title: project.title,
-        client: project.client ?? "",
-        description: project.description ?? "",
-        category: project.category,
-        shoot_date: project.shoot_date,
-        download_link: project.download_link,
-        cover_photo_id: coverId || null,
-        published: project.published,
-        client_paid: Boolean(project.client_paid_at),
-        public_watermarked: project.public_watermarked,
-      },
-    });
+  const syncProjectCaches = useCallback(
+    (state: ProjectSaveState, nextPhotos: DbPhoto[]) => {
+      queryClient.setQueryData(adminProjectQueryKey(project.id), (prev: AdminProjectData | undefined) => {
+        if (!prev) return prev;
+        return {
+          project: {
+            ...state.project,
+            cover_photo_id: state.coverId || null,
+          },
+          assignedPhotos: state.photoIds.map((id, sort_order) => {
+            const photo = nextPhotos.find((item) => item.id === id);
+            return photo ? { sort_order, photo } : null;
+          }).filter((item): item is { sort_order: number; photo: DbPhoto } => item !== null),
+        };
+      });
 
-    if (updateResult.error) {
-      setSaving(false);
-      setError(updateResult.error);
-      return;
-    }
+      queryClient.setQueryData(adminProjectsQueryKey, (prev) =>
+        prev?.map((item) =>
+          item.id === project.id
+            ? {
+                ...item,
+                title: state.project.title,
+                client: state.project.client,
+                category: state.project.category,
+                shoot_date: state.project.shoot_date,
+                published: state.project.published,
+                client_paid_at: state.project.client_paid_at,
+                public_watermarked: state.project.public_watermarked,
+                coverUrl: nextPhotos.find((photo) => photo.id === state.coverId)?.cdn_url ?? item.coverUrl,
+                photoCount: nextPhotos.length,
+              }
+            : item,
+        ),
+      );
+    },
+    [project.id, queryClient],
+  );
 
-    const photosResult = await setPhotosFn({
-      data: { projectId: project.id, photoIds: photos.map((photo) => photo.id) },
-    });
+  const persistProject = useCallback(
+    async (state: ProjectSaveState) => {
+      const updateResult = await updateFn({
+        data: {
+          id: state.project.id,
+          title: state.project.title,
+          client: state.project.client ?? "",
+          description: state.project.description ?? "",
+          category: state.project.category,
+          shoot_date: state.project.shoot_date,
+          download_link: state.project.download_link,
+          cover_photo_id: state.coverId || null,
+          published: state.project.published,
+          client_paid: Boolean(state.project.client_paid_at),
+          public_watermarked: state.project.public_watermarked,
+        },
+      });
 
-    setSaving(false);
-    if (photosResult.error) {
-      setError(photosResult.error);
-      return;
-    }
+      if (updateResult.error) {
+        return { ok: false as const, error: updateResult.error };
+      }
 
-    queryClient.setQueryData(adminBookingsQueryKey, (prev: DbBooking[] | undefined) => {
-      const next =
-        prev?.map((booking) =>
-          booking.project_id === project.id
-            ? { ...booking, client_paid_at: project.client_paid_at }
-            : booking,
-        ) ?? prev;
-      if (next) {
-        for (const booking of next) {
-          if (booking.project_id === project.id) {
-            queryClient.setQueryData(adminBookingQueryKey(booking.id), booking);
+      const photosResult = await setPhotosFn({
+        data: { projectId: state.project.id, photoIds: state.photoIds },
+      });
+
+      if (photosResult.error) {
+        return { ok: false as const, error: photosResult.error };
+      }
+
+      queryClient.setQueryData(adminBookingsQueryKey, (prev: DbBooking[] | undefined) => {
+        const next =
+          prev?.map((booking) =>
+            booking.project_id === state.project.id
+              ? { ...booking, client_paid_at: state.project.client_paid_at }
+              : booking,
+          ) ?? prev;
+        if (next) {
+          for (const booking of next) {
+            if (booking.project_id === state.project.id) {
+              queryClient.setQueryData(adminBookingQueryKey(booking.id), booking);
+            }
           }
         }
-      }
-      return next;
-    });
+        return next;
+      });
 
-    setMessage("Project saved.");
-  }
+      syncProjectCaches(
+        state,
+        state.photoIds
+          .map((id) => photosRef.current.find((photo) => photo.id === id))
+          .filter((photo): photo is DbPhoto => photo !== undefined),
+      );
+      void queryClient.invalidateQueries({ queryKey: adminProjectPhotoGroupsQueryKey });
+      return { ok: true as const };
+    },
+    [project.id, setPhotosFn, syncProjectCaches, updateFn, queryClient],
+  );
 
-  function removePhoto(id: string) {
+  const { status: saveStatus, error: saveError } = useAutoSave(saveState, persistProject);
+
+  async function confirmDeletePhoto() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setError(null);
+
+    const result = await deleteFn({ data: { id: deleteTarget.id } });
+    setDeleting(false);
+
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+
+    const deletedId = deleteTarget.id;
     setPhotos((prev) => {
-      const next = prev.filter((photo) => photo.id !== id);
-      if (coverId === id) setCoverId(next[0]?.id ?? "");
+      const next = prev.filter((photo) => photo.id !== deletedId);
+      if (coverId === deletedId) setCoverId(next[0]?.id ?? "");
       return next;
     });
+    queryClient.setQueryData(adminPhotosQueryKey, (prev: DbPhoto[] | undefined) =>
+      (prev ?? []).filter((photo) => photo.id !== deletedId),
+    );
+    void queryClient.invalidateQueries({ queryKey: adminProjectPhotoGroupsQueryKey });
+    setDeleteTarget(null);
   }
 
   function movePhoto(id: string, direction: -1 | 1) {
@@ -191,7 +279,7 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
     ]);
     setPhotos((prev) => [...prev, ...uploaded]);
     if (!coverId && uploaded[0]) setCoverId(uploaded[0].id);
-    setMessage(`${uploaded.length} photo${uploaded.length === 1 ? "" : "s"} added to project.`);
+    void queryClient.invalidateQueries({ queryKey: adminProjectPhotoGroupsQueryKey });
   }
 
   return (
@@ -203,20 +291,18 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
         <ArrowLeft className="h-4 w-4" /> Back to projects
       </Link>
 
-      {error && (
+      {(error || saveError) && (
         <p className="mb-4 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </p>
-      )}
-      {message && (
-        <p className="mb-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400">
-          {message}
+          {error ?? saveError}
         </p>
       )}
 
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-card">
-          <h2 className="font-display text-lg">Details</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="font-display text-lg">Details</h2>
+            <SaveStatus status={saveStatus} error={saveError} />
+          </div>
           <div className="mt-4 space-y-4">
             <TextField label="Title" value={project.title} onChange={(v) => setProject({ ...project, title: v })} />
             <TextField
@@ -324,15 +410,6 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
               />
             )}
           </div>
-
-          <button
-            type="button"
-            disabled={saving}
-            onClick={() => void saveAll()}
-            className="mt-6 w-full rounded-full bg-gradient-ember px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-glow disabled:opacity-60"
-          >
-            {saving ? "Saving…" : "Save project"}
-          </button>
         </section>
 
         <section className="rounded-2xl border border-border/60 bg-card p-6 shadow-card">
@@ -368,7 +445,7 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
                   photo={photo}
                   orderIndex={index}
                   isCover={coverId === photo.id}
-                  onRemove={() => removePhoto(photo.id)}
+                  onRemove={() => setDeleteTarget(photo)}
                   onSetCover={() => setCoverId(photo.id)}
                   onMoveUp={() => movePhoto(photo.id, -1)}
                   onMoveDown={() => movePhoto(photo.id, 1)}
@@ -382,6 +459,23 @@ function ProjectEditForm({ initial }: { initial: AdminProjectData }) {
           )}
         </section>
       </div>
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !deleting) setDeleteTarget(null);
+        }}
+        title="Delete photo"
+        description={
+          deleteTarget
+            ? `Permanently delete "${deleteTarget.title}"? This removes it from the library and cannot be undone.`
+            : "Permanently delete this photo?"
+        }
+        confirmLabel="Delete"
+        destructive
+        loading={deleting}
+        onConfirm={confirmDeletePhoto}
+      />
     </>
   );
 }
@@ -486,7 +580,7 @@ function ProjectPhotoRow({
           type="button"
           onClick={onRemove}
           className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground hover:bg-secondary hover:text-destructive"
-          aria-label="Remove from project"
+          aria-label="Delete photo"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>

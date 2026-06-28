@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Check, Plus, Trash2, X } from "lucide-react";
+import { Check, Plus, Trash2, X, CircleCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { useAdminPageMeta } from "@/components/admin-page-meta";
@@ -58,6 +58,7 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "Pending", label: "Pending" },
   { value: "Confirmed", label: "Confirmed" },
+  { value: "Completed", label: "Completed" },
   { value: "Declined", label: "Declined" },
 ];
 
@@ -307,7 +308,17 @@ function AdminBookingsList() {
                   </TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <div className="flex justify-end gap-1">
-                      {booking.status !== "Confirmed" && (
+                      {booking.status === "Confirmed" && (
+                        <button
+                          type="button"
+                          onClick={() => void setStatus(booking.id, "Completed")}
+                          className="grid h-8 w-8 place-items-center rounded-md bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25"
+                          title="Mark completed"
+                        >
+                          <CircleCheck className="h-4 w-4" />
+                        </button>
+                      )}
+                      {booking.status !== "Confirmed" && booking.status !== "Completed" && (
                         <button
                           type="button"
                           onClick={() => void setStatus(booking.id, "Confirmed")}
@@ -317,7 +328,7 @@ function AdminBookingsList() {
                           <Check className="h-4 w-4" />
                         </button>
                       )}
-                      {booking.status !== "Declined" && (
+                      {booking.status !== "Declined" && booking.status !== "Completed" && (
                         <button
                           type="button"
                           onClick={() => void setStatus(booking.id, "Declined")}

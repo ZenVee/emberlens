@@ -157,6 +157,7 @@ export function BookingsCalendar({
       <div className="flex flex-wrap justify-center gap-4 text-xs text-muted-foreground">
         <LegendChip className="bg-blush/20 text-blush" label="Pending" />
         <LegendChip className="bg-ember/20 text-ember" label="Confirmed" />
+        <LegendChip className="bg-emerald-500/20 text-emerald-400" label="Completed" />
         <LegendChip className="bg-muted text-muted-foreground" label="Declined" />
       </div>
     </div>
@@ -190,6 +191,7 @@ function buildMonthGrid(month: Date): CalendarDay[] {
 function statusChipClass(status: BookingStatus) {
   if (status === "Confirmed") return "bg-ember/20 text-ember";
   if (status === "Pending") return "bg-blush/20 text-blush";
+  if (status === "Completed") return "bg-emerald-500/20 text-emerald-400";
   return "bg-muted text-muted-foreground";
 }
 

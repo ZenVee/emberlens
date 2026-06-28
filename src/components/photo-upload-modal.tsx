@@ -13,6 +13,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { categorySelectOptions } from "@/lib/categories";
 import { type DbPhoto, type PhotoCategory } from "@/lib/media-types";
+import { normalizeUploadImage } from "@/lib/normalize-upload-image";
 
 type UploadItem = {
   id: string;
@@ -162,7 +163,8 @@ export function PhotoUploadModal({
     };
 
     try {
-      const base64 = await fileToBase64(item.file, (readPct) =>
+      const file = await normalizeUploadImage(item.file);
+      const base64 = await fileToBase64(file, (readPct) =>
         setItemProgress(Math.round(readPct * 0.25)),
       );
 
@@ -171,8 +173,8 @@ export function PhotoUploadModal({
       try {
         result = await onUpload({
           fileBase64: base64,
-          mimeType: item.file.type || "image/jpeg",
-          filename: item.file.name,
+          mimeType: file.type || "image/jpeg",
+          filename: file.name,
           title: item.title.trim() || titleFromFilename(item.file.name),
           category: item.category,
         });
