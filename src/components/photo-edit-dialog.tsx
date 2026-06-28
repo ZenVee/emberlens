@@ -25,11 +25,12 @@ type PreviewMode = "original" | "watermarked";
 type PhotoEditDialogProps = {
   photo: DbPhoto | null;
   categories: readonly string[];
+  folders: readonly { id: string; name: string }[];
   onClose: () => void;
   onSave: (photo: DbPhoto) => void | Promise<void>;
 };
 
-export function PhotoEditDialog({ photo, categories, onClose, onSave }: PhotoEditDialogProps) {
+export function PhotoEditDialog({ photo, categories, folders, onClose, onSave }: PhotoEditDialogProps) {
   const [draft, setDraft] = useState<DbPhoto | null>(photo);
   const [previewMode, setPreviewMode] = useState<PreviewMode>("original");
 
@@ -41,6 +42,14 @@ export function PhotoEditDialog({ photo, categories, onClose, onSave }: PhotoEdi
   const categoryOptions = useMemo(
     () => categorySelectOptions(categories, draft?.category),
     [categories, draft?.category],
+  );
+
+  const folderOptions = useMemo(
+    () => [
+      { value: "__none__", label: "No folder" },
+      ...folders.map((folder) => ({ value: folder.id, label: folder.name })),
+    ],
+    [folders],
   );
 
   const hasWatermark = Boolean(
@@ -153,6 +162,17 @@ export function PhotoEditDialog({ photo, categories, onClose, onSave }: PhotoEdi
                 value={draft.category}
                 onValueChange={(value) => setDraft({ ...draft, category: value })}
                 options={categoryOptions}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="photo-edit-folder">Folder</Label>
+              <AppSelect
+                value={draft.folder_id ?? "__none__"}
+                onValueChange={(value) =>
+                  setDraft({ ...draft, folder_id: value === "__none__" ? null : value })
+                }
+                options={folderOptions}
               />
             </div>
 
