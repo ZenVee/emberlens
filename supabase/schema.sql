@@ -255,6 +255,13 @@ create table public.site_settings (
     "Event coverage",
     "Lifestyle / Travel"
   ]'::jsonb,
+  theme_primary_color text not null default '#e5a050',
+  theme_secondary_color text not null default '#4a423c',
+  theme_accent_color text not null default '#e8b49a',
+  theme_ember_color text not null default '#d99548',
+  theme_font_sans text not null default 'Inter',
+  theme_font_display text not null default 'Fraunces',
+  theme_border_radius text not null default '1rem',
   updated_at timestamptz not null default now()
 );
 

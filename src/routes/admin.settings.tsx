@@ -7,6 +7,7 @@ import {
   Home,
   ImagePlus,
   Loader2,
+  Palette,
   PanelBottom,
   Plus,
   Trash2,
@@ -22,6 +23,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAdminSiteSettings } from "@/lib/admin-queries";
 import { siteSettingsQueryKey } from "@/lib/query-keys";
 import {
@@ -36,12 +44,20 @@ import {
   type SiteService,
 } from "@/lib/site-settings-types";
 import { useAutoSave } from "@/hooks/use-auto-save";
+import {
+  applySiteTheme,
+  pickSiteTheme,
+  THEME_BORDER_RADIUS_OPTIONS,
+  THEME_FONT_DISPLAY_OPTIONS,
+  THEME_FONT_SANS_OPTIONS,
+} from "@/lib/site-theme";
 import { cn } from "@/lib/utils";
 
 const TABS = [
   { value: "brand", label: "Brand", icon: Building2 },
   { value: "homepage", label: "Homepage", icon: Home },
   { value: "pages", label: "Pages", icon: FileText },
+  { value: "theme", label: "Theme", icon: Palette },
   { value: "footer", label: "Footer", icon: PanelBottom },
 ] as const;
 
@@ -75,8 +91,13 @@ function AdminSettings() {
 
   useAdminPageMeta({
     title: "Settings",
-    subtitle: "Brand, homepage copy, and public page content.",
+    subtitle: "Brand, homepage copy, theme, and public page content.",
   });
+
+  useEffect(() => {
+    if (!form) return;
+    applySiteTheme(pickSiteTheme(form));
+  }, [form]);
 
   const persistSettings = useCallback(
     async (next: SiteSettingsForm) => {
@@ -517,6 +538,153 @@ function AdminSettings() {
         </SettingsPanel>
       </TabsContent>
 
+      <TabsContent value="theme" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <SettingsPanel
+            title="Brand colors"
+            description="Primary palette used for buttons, accents, and gradients across the site."
+          >
+            <div className="grid gap-5 sm:grid-cols-2">
+              <ColorField
+                label="Primary"
+                hint="Buttons and links"
+                value={form.theme_primary_color}
+                onChange={(value) => updateField("theme_primary_color", value)}
+              />
+              <ColorField
+                label="Secondary"
+                hint="Subtle backgrounds"
+                value={form.theme_secondary_color}
+                onChange={(value) => updateField("theme_secondary_color", value)}
+              />
+              <ColorField
+                label="Accent"
+                hint="Highlights and gradients"
+                value={form.theme_accent_color}
+                onChange={(value) => updateField("theme_accent_color", value)}
+              />
+              <ColorField
+                label="Ember"
+                hint="Brand accent color"
+                value={form.theme_ember_color}
+                onChange={(value) => updateField("theme_ember_color", value)}
+              />
+            </div>
+          </SettingsPanel>
+
+          <SettingsPanel
+            title="Typography & shape"
+            description="Fonts and corner radius for the public site."
+          >
+            <div className="space-y-5">
+              <FormField label="Body font">
+                <Select
+                  value={form.theme_font_sans}
+                  onValueChange={(value) => updateField("theme_font_sans", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {THEME_FONT_SANS_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Heading font">
+                <Select
+                  value={form.theme_font_display}
+                  onValueChange={(value) => updateField("theme_font_display", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {THEME_FONT_DISPLAY_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Corner radius">
+                <Select
+                  value={form.theme_border_radius}
+                  onValueChange={(value) => updateField("theme_border_radius", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {THEME_BORDER_RADIUS_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </div>
+          </SettingsPanel>
+        </div>
+
+        <SettingsPanel
+          title="Preview"
+          description="How your theme looks with current settings."
+          className="mt-6"
+        >
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: "Primary", color: form.theme_primary_color },
+              { label: "Secondary", color: form.theme_secondary_color },
+              { label: "Accent", color: form.theme_accent_color },
+              { label: "Ember", color: form.theme_ember_color },
+            ].map(({ label, color }) => (
+              <div
+                key={label}
+                className="overflow-hidden rounded-xl border border-border/60"
+                style={{ borderRadius: form.theme_border_radius }}
+              >
+                <div className="h-16" style={{ backgroundColor: color }} />
+                <div className="bg-card px-3 py-2 text-xs text-muted-foreground">{label}</div>
+              </div>
+            ))}
+          </div>
+          <div
+            className="mt-5 rounded-xl border border-border/60 bg-card p-5"
+            style={{ borderRadius: form.theme_border_radius }}
+          >
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">Sample heading</p>
+            <h3
+              className="mt-1 text-xl font-medium"
+              style={{ fontFamily: `"${form.theme_font_display}", serif` }}
+            >
+              {form.studio_name || "Studio name"}
+            </h3>
+            <p
+              className="mt-2 text-sm text-muted-foreground"
+              style={{ fontFamily: `"${form.theme_font_sans}", sans-serif` }}
+            >
+              {form.tagline || "Your tagline appears here."}
+            </p>
+            <button
+              type="button"
+              className="mt-4 inline-flex rounded-full px-4 py-2 text-sm font-medium text-primary-foreground"
+              style={{
+                backgroundColor: form.theme_primary_color,
+                borderRadius: form.theme_border_radius,
+              }}
+            >
+              Sample button
+            </button>
+          </div>
+        </SettingsPanel>
+      </TabsContent>
+
       <TabsContent value="footer" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
         <SettingsPanel
           title="Site footer"
@@ -679,6 +847,38 @@ function CategoryListEditor({
         <Plus /> {addLabel}
       </Button>
     </div>
+  );
+}
+
+function ColorField({
+  label,
+  hint,
+  value,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <FormField label={label} hint={hint}>
+      <div className="flex gap-2">
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-border/60 bg-transparent p-1"
+          aria-label={`${label} color picker`}
+        />
+        <Input
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="#000000"
+          className="font-mono text-sm"
+        />
+      </div>
+    </FormField>
   );
 }
 

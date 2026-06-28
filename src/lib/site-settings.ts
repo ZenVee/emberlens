@@ -9,6 +9,14 @@ import {
 } from "./categories";
 import { loadSiteSettings, SITE_SETTINGS_SELECT } from "./site-settings-data";
 import { getSupabaseServerClient } from "./supabase";
+import {
+  normalizeBorderRadius,
+  normalizeHexColor,
+  normalizeThemeFont,
+  THEME_BORDER_RADIUS_OPTIONS,
+  THEME_FONT_DISPLAY_OPTIONS,
+  THEME_FONT_SANS_OPTIONS,
+} from "./site-theme";
 import type { SiteSettings, SiteSettingsPatch } from "./site-settings-types";
 
 const MAX_HERO_BYTES = 15 * 1024 * 1024;
@@ -80,6 +88,31 @@ export const updateSiteSettings = createServerFn({ method: "POST" })
     }
     if (data.hero_image_url !== undefined) patch.hero_image_url = data.hero_image_url;
     if (data.hero_image_fivemanage_id !== undefined) patch.hero_image_fivemanage_id = data.hero_image_fivemanage_id;
+    if (data.theme_primary_color !== undefined) {
+      patch.theme_primary_color = normalizeHexColor(data.theme_primary_color, "#e5a050");
+    }
+    if (data.theme_secondary_color !== undefined) {
+      patch.theme_secondary_color = normalizeHexColor(data.theme_secondary_color, "#4a423c");
+    }
+    if (data.theme_accent_color !== undefined) {
+      patch.theme_accent_color = normalizeHexColor(data.theme_accent_color, "#e8b49a");
+    }
+    if (data.theme_ember_color !== undefined) {
+      patch.theme_ember_color = normalizeHexColor(data.theme_ember_color, "#d99548");
+    }
+    if (data.theme_font_sans !== undefined) {
+      patch.theme_font_sans = normalizeThemeFont(data.theme_font_sans, THEME_FONT_SANS_OPTIONS, "Inter");
+    }
+    if (data.theme_font_display !== undefined) {
+      patch.theme_font_display = normalizeThemeFont(
+        data.theme_font_display,
+        THEME_FONT_DISPLAY_OPTIONS,
+        "Fraunces",
+      );
+    }
+    if (data.theme_border_radius !== undefined) {
+      patch.theme_border_radius = normalizeBorderRadius(data.theme_border_radius, "1rem");
+    }
 
     const { data: updated, error } = await supabase
       .from("site_settings")

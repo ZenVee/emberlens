@@ -15,6 +15,7 @@ import { authUserQueryKey, siteSettingsQueryKey } from "../lib/query-keys";
 import { DEFAULT_SITE_SETTINGS, type SiteSettings } from "../lib/site-settings-types";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "../components/theme-provider";
+import { SiteThemeProvider } from "../components/site-theme-provider";
 
 async function fetchUserQuery() {
   const { fetchUser: fetchUserFn } = await import("../lib/auth");
@@ -126,10 +127,6 @@ export const Route = createRootRouteWithContext<{
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap",
-      },
     ],
   }),
   shellComponent: RootShell,
@@ -158,6 +155,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
+        <SiteThemeProvider />
         <Outlet />
       </ThemeProvider>
     </QueryClientProvider>

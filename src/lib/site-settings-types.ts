@@ -61,6 +61,13 @@ export type SiteSettings = {
   photo_categories: string[];
   project_categories: string[];
   session_types: string[];
+  theme_primary_color: string;
+  theme_secondary_color: string;
+  theme_accent_color: string;
+  theme_ember_color: string;
+  theme_font_sans: string;
+  theme_font_display: string;
+  theme_border_radius: string;
 };
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
@@ -95,6 +102,13 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   photo_categories: [...DEFAULT_PHOTO_CATEGORIES],
   project_categories: [...DEFAULT_PROJECT_CATEGORIES],
   session_types: [...DEFAULT_SESSION_TYPES],
+  theme_primary_color: "#e5a050",
+  theme_secondary_color: "#4a423c",
+  theme_accent_color: "#e8b49a",
+  theme_ember_color: "#d99548",
+  theme_font_sans: "Inter",
+  theme_font_display: "Fraunces",
+  theme_border_radius: "1rem",
 };
 
 export type SiteSettingsPatch = Partial<
