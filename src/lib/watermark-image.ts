@@ -1,15 +1,10 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-
 import { decode as decodeWebp } from "@jsquash/webp";
 import { Image } from "imagescript";
 
+import watermarkBase64 from "../assets/watermark.png?inline";
 import { uploadToFivemanage } from "./fivemanage";
 
 const MAX_WATERMARK_PX = 2560;
-const WATERMARK_PATH = fileURLToPath(
-  new URL("../assets/watermark.png", import.meta.url),
-);
 
 let watermarkOverlayPromise: Promise<Image> | null = null;
 
@@ -17,8 +12,15 @@ function extensionForMime(mimeType: string): "png" | "jpg" {
   return mimeType === "image/png" ? "png" : "jpg";
 }
 
+function decodeInlineAsset(inline: string): Buffer {
+  const base64 = inline.includes(",") ? inline.slice(inline.indexOf(",") + 1) : inline;
+  return Buffer.from(base64, "base64");
+}
+
 function getWatermarkOverlay(): Promise<Image> {
-  watermarkOverlayPromise ??= Image.decode(readFileSync(WATERMARK_PATH));
+  watermarkOverlayPromise ??= Promise.resolve().then(() =>
+    Image.decode(decodeInlineAsset(watermarkBase64)),
+  );
   return watermarkOverlayPromise;
 }
 
@@ -72,10 +74,7 @@ export async function applyStudioWatermark(
   image.composite(overlay, x, y);
 
   const ext = extensionForMime(mimeType);
-  const encoded =
-    ext === "png"
-      ? await image.encode(1)
-      : await image.encodeJPEG(82);
+  const encoded = ext === "png" ? await image.encode(1) : await image.encodeJPEG(82);
 
   return {
     buffer: Buffer.from(encoded),

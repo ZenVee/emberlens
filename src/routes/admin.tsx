@@ -1,23 +1,32 @@
-import { createFileRoute, Outlet, redirect, useRouteContext, useRouterState } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Outlet,
+  redirect,
+  useRouteContext,
+  useRouterState,
+} from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { AdminPageMetaProvider, useAdminPageMetaState } from "@/components/admin-page-meta";
+import { AdminPageMetaProvider } from "@/components/admin-page-meta";
+import { useAdminPageMetaState } from "@/components/use-admin-page-meta";
 import { AdminShell } from "@/components/admin-shell";
 import { prefetchAdminDashboard } from "@/lib/admin-queries";
 
 export const Route = createFileRoute("/admin")({
-  beforeLoad: ({ context, location }) => {
+  beforeLoad: ({ context, location, preload }) => {
     const isLogin = location.pathname === "/admin/login";
     const isOnboarding = location.pathname === "/admin/onboarding";
 
     if (isLogin) {
-      if (context.user?.isAdmin) {
+      if (!preload && context.user?.isAdmin) {
         throw redirect({
           to: context.user.needsOnboarding ? "/admin/onboarding" : "/admin",
         });
       }
       return;
     }
+
+    if (preload) return;
 
     if (!context.user) {
       throw redirect({ to: "/admin/login", search: { error: undefined } });
@@ -45,11 +54,9 @@ function AdminLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isBare = pathname === "/admin/login" || pathname === "/admin/onboarding";
 
-  if (isBare) return <Outlet />;
-
   return (
     <AdminPageMetaProvider>
-      <AdminLayoutShell />
+      {isBare ? <Outlet /> : <AdminLayoutShell />}
     </AdminPageMetaProvider>
   );
 }
