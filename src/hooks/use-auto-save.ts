@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type AutoSaveStatus = "idle" | "pending" | "saving" | "saved" | "error";
 
@@ -63,18 +63,18 @@ export function useAutoSave<T>(
     return () => clearTimeout(timer);
   }, [value, delay, enabled]);
 
-  function syncBaseline(next: T) {
+  const syncBaseline = useCallback((next: T) => {
     lastSavedRef.current = JSON.stringify(next);
     setStatus("idle");
     setError(null);
-  }
+  }, []);
 
-  function cancelPending() {
+  const cancelPending = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
       timerRef.current = undefined;
     }
-  }
+  }, []);
 
   return { status, error, setError, syncBaseline, cancelPending };
 }
