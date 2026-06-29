@@ -121,6 +121,6 @@ export type SiteSettingsPatch = Partial<
 export type SiteSettingsForm = Omit<SiteSettings, "hero_image_url" | "hero_image_fivemanage_id">;
 
 export function toSiteSettingsForm(settings: SiteSettings): SiteSettingsForm {
-  const { hero_image_url: _url, hero_image_fivemanage_id: _id, ...form } = settings;
+  const { hero_image_url: _heroUrl, hero_image_fivemanage_id: _heroId, ...form } = settings;
   return form;
 }

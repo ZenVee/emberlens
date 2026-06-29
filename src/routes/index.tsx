@@ -1,12 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Camera, Sparkles, MapPin, Mail } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowRight, Camera, Sparkles, MapPin } from "lucide-react";
 
-import { AppSelect } from "@/components/app-select";
+import { BookingRequestForm } from "@/components/booking-request-form";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { PhotoCard } from "@/components/photo-card";
 import { MediaImage } from "@/components/media-image";
-import { categorySelectOptions, DEFAULT_SESSION_TYPES } from "@/lib/categories";
 import { PLACEHOLDER_IMAGE } from "@/lib/placeholder-image";
 import { fetchFeaturedPhotos, fetchPublishedProjects } from "@/lib/media";
 import { publicGalleryWatermarked } from "@/lib/media-types";
@@ -36,13 +34,6 @@ export const Route = createFileRoute("/")({
 function Index() {
   const settings = useSiteSettings();
   const { featuredPhotos, recentProjects } = Route.useLoaderData();
-  const sessionTypeOptions = useMemo(
-    () => categorySelectOptions(settings.session_types),
-    [settings.session_types],
-  );
-  const [sessionType, setSessionType] = useState(
-    () => settings.session_types[0] ?? DEFAULT_SESSION_TYPES[0],
-  );
   const heroSrc = settings.hero_image_url ?? PLACEHOLDER_IMAGE;
 
   return (
@@ -69,7 +60,9 @@ function Index() {
           <h1 className="max-w-4xl font-display text-5xl leading-[1.05] sm:text-6xl md:text-7xl">
             {settings.hero_title}
           </h1>
-          <p className="mt-6 max-w-xl text-base text-muted-foreground sm:text-lg">{settings.hero_text}</p>
+          <p className="mt-6 max-w-xl text-base text-muted-foreground sm:text-lg">
+            {settings.hero_text}
+          </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link
               to="/projects"
@@ -91,7 +84,10 @@ function Index() {
               { k: "5★", v: "Avg. rating" },
               { k: "24h", v: "Turnaround" },
             ].map((s) => (
-              <div key={s.v} className="rounded-2xl border border-border/60 bg-card/60 p-4 backdrop-blur">
+              <div
+                key={s.v}
+                className="rounded-2xl border border-border/60 bg-card/60 p-4 backdrop-blur"
+              >
                 <p className="font-display text-2xl text-gradient-ember">{s.k}</p>
                 <p className="text-xs text-muted-foreground">{s.v}</p>
               </div>
@@ -107,13 +103,18 @@ function Index() {
             <p className="text-sm uppercase tracking-[0.2em] text-ember">Featured</p>
             <h2 className="mt-2 font-display text-3xl sm:text-4xl">Recent frames</h2>
           </div>
-          <Link to="/gallery" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <Link
+            to="/gallery"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
             See full gallery <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {featuredPhotos.length === 0 ? (
-            <p className="col-span-full text-sm text-muted-foreground">Featured photos will appear here once published.</p>
+            <p className="col-span-full text-sm text-muted-foreground">
+              Featured photos will appear here once published.
+            </p>
           ) : (
             featuredPhotos.map((p, i) => (
               <PhotoCard
@@ -133,25 +134,70 @@ function Index() {
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
         <div className="grid items-center gap-12 rounded-3xl border border-border/60 bg-gradient-night p-8 shadow-card md:grid-cols-2 md:p-14">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-ember">About {settings.studio_name}</p>
+            <p className="text-sm uppercase tracking-[0.2em] text-ember">
+              About {settings.studio_name}
+            </p>
             <h2 className="mt-2 font-display text-3xl sm:text-4xl">A cozy lens on a loud city.</h2>
             <p className="mt-5 text-muted-foreground">{settings.bio}</p>
             <ul className="mt-6 space-y-3 text-sm">
-              <li className="flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full bg-secondary text-ember"><Camera className="h-3.5 w-3.5" /></span>Cinematic color grading, every delivery</li>
-              <li className="flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full bg-secondary text-ember"><Sparkles className="h-3.5 w-3.5" /></span>24-hour preview turnaround</li>
-              <li className="flex items-center gap-3"><span className="grid h-7 w-7 place-items-center rounded-full bg-secondary text-ember"><MapPin className="h-3.5 w-3.5" /></span>{settings.location}</li>
+              <li className="flex items-center gap-3">
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-secondary text-ember">
+                  <Camera className="h-3.5 w-3.5" />
+                </span>
+                Cinematic color grading, every delivery
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-secondary text-ember">
+                  <Sparkles className="h-3.5 w-3.5" />
+                </span>
+                24-hour preview turnaround
+              </li>
+              <li className="flex items-center gap-3">
+                <span className="grid h-7 w-7 place-items-center rounded-full bg-secondary text-ember">
+                  <MapPin className="h-3.5 w-3.5" />
+                </span>
+                {settings.location}
+              </li>
             </ul>
           </div>
           <div className="grid grid-cols-2 gap-4">
             {featuredPhotos[0] ? (
-              <img src={featuredPhotos[0].src} alt="" loading="lazy" width={600} height={800} className="aspect-[3/4] w-full rounded-2xl object-cover shadow-card" />
+              <img
+                src={featuredPhotos[0].src}
+                alt=""
+                loading="lazy"
+                width={600}
+                height={800}
+                className="aspect-[3/4] w-full rounded-2xl object-cover shadow-card"
+              />
             ) : (
-              <img src={heroSrc} alt="" loading="lazy" width={600} height={800} className="aspect-[3/4] w-full rounded-2xl object-cover shadow-card" />
+              <img
+                src={heroSrc}
+                alt=""
+                loading="lazy"
+                width={600}
+                height={800}
+                className="aspect-[3/4] w-full rounded-2xl object-cover shadow-card"
+              />
             )}
             {featuredPhotos[1] ? (
-              <img src={featuredPhotos[1].src} alt="" loading="lazy" width={600} height={600} className="mt-8 aspect-square w-full rounded-2xl object-cover shadow-card" />
+              <img
+                src={featuredPhotos[1].src}
+                alt=""
+                loading="lazy"
+                width={600}
+                height={600}
+                className="mt-8 aspect-square w-full rounded-2xl object-cover shadow-card"
+              />
             ) : (
-              <img src={heroSrc} alt="" loading="lazy" width={600} height={600} className="mt-8 aspect-square w-full rounded-2xl object-cover shadow-card" />
+              <img
+                src={heroSrc}
+                alt=""
+                loading="lazy"
+                width={600}
+                height={600}
+                className="mt-8 aspect-square w-full rounded-2xl object-cover shadow-card"
+              />
             )}
           </div>
         </div>
@@ -160,7 +206,9 @@ function Index() {
       {/* SERVICES */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
         <div className="mb-10 text-center">
-          <p className="text-sm uppercase tracking-[0.2em] text-ember">{settings.services_eyebrow}</p>
+          <p className="text-sm uppercase tracking-[0.2em] text-ember">
+            {settings.services_eyebrow}
+          </p>
           <h2 className="mt-2 font-display text-3xl sm:text-4xl">{settings.services_title}</h2>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -184,16 +232,23 @@ function Index() {
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
         <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-ember">{settings.projects_eyebrow}</p>
+            <p className="text-sm uppercase tracking-[0.2em] text-ember">
+              {settings.projects_eyebrow}
+            </p>
             <h2 className="mt-2 font-display text-3xl sm:text-4xl">{settings.projects_title}</h2>
           </div>
-          <Link to="/projects" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <Link
+            to="/projects"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
             All projects <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
         <div className="grid gap-5 md:grid-cols-3">
           {recentProjects.length === 0 ? (
-            <p className="col-span-full text-sm text-muted-foreground">Published projects will appear here.</p>
+            <p className="col-span-full text-sm text-muted-foreground">
+              Published projects will appear here.
+            </p>
           ) : (
             recentProjects.slice(0, 3).map((pr) => (
               <Link
@@ -206,10 +261,13 @@ function Index() {
                   <MediaImage
                     src={pr.cover || PLACEHOLDER_IMAGE}
                     alt={pr.title}
-                    watermarked={Boolean(pr.cover) && publicGalleryWatermarked({
-                      client_paid_at: pr.clientPaid ? "paid" : null,
-                      public_watermarked: pr.publicWatermarked,
-                    })}
+                    watermarked={
+                      Boolean(pr.cover) &&
+                      publicGalleryWatermarked({
+                        client_paid_at: pr.clientPaid ? "paid" : null,
+                        public_watermarked: pr.publicWatermarked,
+                      })
+                    }
                     loading="lazy"
                     width={800}
                     height={600}
@@ -219,7 +277,9 @@ function Index() {
                 <div className="p-5">
                   <p className="text-xs uppercase tracking-wide text-ember">{pr.category}</p>
                   <h3 className="mt-1 font-display text-xl">{pr.title}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{pr.client} · {pr.date}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {pr.client} · {pr.date}
+                  </p>
                 </div>
               </Link>
             ))
@@ -233,23 +293,11 @@ function Index() {
           <div className="mb-8 text-center">
             <p className="text-sm uppercase tracking-[0.2em] text-ember">Book a session</p>
             <h2 className="mt-2 font-display text-3xl sm:text-4xl">Let's make something warm.</h2>
-            <p className="mt-3 text-sm text-muted-foreground">Tell us about your shoot. We'll get back within 2 hours.</p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Tell us about your shoot. We'll get back within 2 hours.
+            </p>
           </div>
-          <form className="grid gap-4 sm:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
-            <input className="rounded-xl border border-border bg-background/60 px-4 py-3 text-sm outline-none focus:border-ember" placeholder="Your name" />
-            <input className="rounded-xl border border-border bg-background/60 px-4 py-3 text-sm outline-none focus:border-ember" placeholder="Your name" />
-            <div className="sm:col-span-2">
-              <AppSelect
-                value={sessionType}
-                onValueChange={setSessionType}
-                options={sessionTypeOptions}
-              />
-            </div>
-            <textarea rows={4} className="rounded-xl border border-border bg-background/60 px-4 py-3 text-sm outline-none focus:border-ember sm:col-span-2" placeholder="Tell us about the vibe, location, date…" />
-            <button className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-ember px-6 py-3 text-sm font-medium text-primary-foreground shadow-glow sm:col-span-2">
-              <Mail className="h-4 w-4" /> Send request
-            </button>
-          </form>
+          <BookingRequestForm sessionTypes={settings.session_types} />
         </div>
       </section>
 

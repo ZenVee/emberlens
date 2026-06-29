@@ -1,7 +1,13 @@
-import { queryOptions, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query";
 
 import { fetchAdminBookings, fetchAdminBooking } from "./bookings";
-import { fetchAdminPhotos, fetchAdminPhotoFolders, fetchAdminProject, fetchAdminProjectPhotoGroups, fetchAdminProjects } from "./media";
+import {
+  fetchAdminPhotos,
+  fetchAdminPhotoFolders,
+  fetchAdminProject,
+  fetchAdminProjectPhotoGroups,
+  fetchAdminProjects,
+} from "./media";
 import {
   adminBookingsQueryKey,
   adminBookingQueryKey,

@@ -52,10 +52,13 @@ function ProjectsLayout() {
                 <MediaImage
                   src={pr.cover || PLACEHOLDER_IMAGE}
                   alt={pr.title}
-                  watermarked={Boolean(pr.cover) && publicGalleryWatermarked({
-                    client_paid_at: pr.clientPaid ? "paid" : null,
-                    public_watermarked: pr.publicWatermarked,
-                  })}
+                  watermarked={
+                    Boolean(pr.cover) &&
+                    publicGalleryWatermarked({
+                      client_paid_at: pr.clientPaid ? "paid" : null,
+                      public_watermarked: pr.publicWatermarked,
+                    })
+                  }
                   loading="lazy"
                   width={800}
                   height={600}

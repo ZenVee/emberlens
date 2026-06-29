@@ -12,10 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { DbPhotoFolder } from "@/lib/media-types";
-import {
-  projectFolderFilter,
-  type FolderFilter,
-} from "@/lib/photo-folder-utils";
+import { projectFolderFilter, type FolderFilter } from "@/lib/photo-folder-utils";
 import { cn } from "@/lib/utils";
 
 export type { FolderFilter } from "@/lib/photo-folder-utils";
@@ -91,7 +88,8 @@ export function PhotoFolderNav({
   }
 
   async function handleDelete(folder: DbPhotoFolder) {
-    if (!window.confirm(`Delete folder "${folder.name}"? Photos will stay in your library.`)) return;
+    if (!window.confirm(`Delete folder "${folder.name}"? Photos will stay in your library.`))
+      return;
     const err = await onDelete(folder.id);
     if (err) setError(err);
   }
@@ -100,8 +98,16 @@ export function PhotoFolderNav({
     <>
       <div className="rounded-xl border border-border/60 bg-card p-3 shadow-card">
         <div className="mb-2 flex items-center justify-between gap-2 px-1">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Folders</p>
-          <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={openCreate}>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Folders
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 px-2 text-xs"
+            onClick={openCreate}
+          >
             <Plus className="h-3.5 w-3.5" /> New
           </Button>
         </div>
@@ -152,7 +158,9 @@ export function PhotoFolderNav({
 
         {projectFolders.length > 0 && (
           <div className="mt-4 border-t border-border/60 pt-3">
-            <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wider text-blush">Projects</p>
+            <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wider text-blush">
+              Projects
+            </p>
             <div className="space-y-0.5">
               {projectFolders.map((project) => (
                 <ProjectFolderRow

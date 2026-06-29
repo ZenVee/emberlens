@@ -14,7 +14,10 @@ export const Route = createFileRoute("/projects/$slug")({
     const settings = match.context.settings ?? DEFAULT_SITE_SETTINGS;
     const meta = [
       { title: `${loaderData?.title ?? "Project"} — ${settings.studio_name}` },
-      { name: "description", content: loaderData?.description ?? `Project by ${settings.studio_name}.` },
+      {
+        name: "description",
+        content: loaderData?.description ?? `Project by ${settings.studio_name}.`,
+      },
       { property: "og:image", content: loaderData?.cover ?? "" },
     ];
     if (loaderData && !loaderData.published) {
@@ -91,11 +94,12 @@ function ProjectDetail() {
               <EyeOff className="h-3.5 w-3.5" /> Client preview — not listed on the public site
             </p>
           )}
-          {!project.published && clientGalleryWatermarked({ client_paid_at: project.clientPaid ? "paid" : null }) && (
-            <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-300">
-              <Lock className="h-3.5 w-3.5" /> Preview gallery — watermarked until delivery
-            </p>
-          )}
+          {!project.published &&
+            clientGalleryWatermarked({ client_paid_at: project.clientPaid ? "paid" : null }) && (
+              <p className="mt-4 inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-300">
+                <Lock className="h-3.5 w-3.5" /> Preview gallery — watermarked until delivery
+              </p>
+            )}
           <div className="mt-6 flex flex-wrap gap-4 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2">
               <User2 className="h-4 w-4 text-ember" /> {project.client ?? "Private"}

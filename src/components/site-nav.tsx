@@ -44,7 +44,9 @@ export function SiteNav() {
                 key={l.to}
                 to={l.to}
                 className={`rounded-full px-4 py-2 text-sm transition-colors ${
-                  active ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
+                  active
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {l.label}

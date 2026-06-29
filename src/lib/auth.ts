@@ -25,17 +25,19 @@ function toAuthUser(user: User, profile: Profile): AuthUser {
   };
 }
 
-export const fetchUser = createServerFn({ method: "GET" }).handler(async (): Promise<AuthUser | null> => {
-  const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase.auth.getUser();
+export const fetchUser = createServerFn({ method: "GET" }).handler(
+  async (): Promise<AuthUser | null> => {
+    const supabase = getSupabaseServerClient();
+    const { data, error } = await supabase.auth.getUser();
 
-  if (error || !data.user) {
-    return null;
-  }
+    if (error || !data.user) {
+      return null;
+    }
 
-  const profile = await syncProfileForUser(supabase, data.user);
-  return toAuthUser(data.user, profile);
-});
+    const profile = await syncProfileForUser(supabase, data.user);
+    return toAuthUser(data.user, profile);
+  },
+);
 
 export const signOut = createServerFn({ method: "POST" }).handler(async () => {
   const supabase = getSupabaseServerClient();

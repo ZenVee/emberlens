@@ -1,10 +1,20 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { requireAdmin } from "./admin";
+import { assertPublicBookingRateLimit } from "./booking-rate-limit-server";
+import { validateBookingCoreFields } from "./booking-validation";
 import { isAllowedCategory } from "./categories";
 import { loadSiteSettings } from "./site-settings-data";
 import { mergePaidOnLink, syncBookingPaidToProject } from "./paid-sync";
-import { isBookingStatus, type BookingStatus, type DbBooking } from "./bookings-types";
+import {
+  bookingIdSchema,
+  createAdminBookingSchema,
+  createBookingSchema,
+  updateBookingSchema,
+  updateBookingStatusSchema,
+} from "./schemas/booking";
+import { zodValidator } from "./schemas/parse";
+import { isBookingStatus, type DbBooking } from "./bookings-types";
 import { getSupabaseServerClient } from "./supabase";
 
 const BOOKING_SELECT =
@@ -23,18 +33,6 @@ async function resolveProjectId(
   return id;
 }
 
-function parseShootAt(value: string): { iso: string } | { error: string } {
-  const trimmed = value.trim();
-  if (!trimmed) return { error: "Shoot date and time are required." };
-
-  const parsed = new Date(trimmed);
-  if (Number.isNaN(parsed.getTime())) {
-    return { error: "Invalid date or time." };
-  }
-
-  return { iso: parsed.toISOString() };
-}
-
 export const fetchAdminBookings = createServerFn({ method: "GET" }).handler(
   async (): Promise<DbBooking[]> => {
     await requireAdmin();
@@ -51,26 +49,16 @@ export const fetchAdminBookings = createServerFn({ method: "GET" }).handler(
 );
 
 export const createBooking = createServerFn({ method: "POST" })
-  .validator(
-    (data: {
-      client_name: string;
-      session_type: string;
-      shoot_at: string;
-      phone_number?: string;
-      notes?: string;
-    }) => data,
-  )
+  .validator(zodValidator(createBookingSchema))
   .handler(async ({ data }) => {
-    const clientName = data.client_name.trim();
-    const sessionType = data.session_type.trim();
-    const shootAt = parseShootAt(data.shoot_at);
+    const rateLimit = assertPublicBookingRateLimit();
+    if (rateLimit.error) return { error: rateLimit.error, booking: null };
 
-    if (clientName.length < 1) return { error: "Name is required.", booking: null };
-    if (sessionType.length < 1) return { error: "Session type is required.", booking: null };
-    if ("error" in shootAt) return { error: shootAt.error, booking: null };
+    const validated = validateBookingCoreFields(data);
+    if ("error" in validated) return { error: validated.error, booking: null };
 
     const settings = await loadSiteSettings();
-    if (!isAllowedCategory(sessionType, settings.session_types)) {
+    if (!isAllowedCategory(validated.sessionType, settings.session_types)) {
       return { error: "Invalid session type.", booking: null };
     }
 
@@ -78,9 +66,9 @@ export const createBooking = createServerFn({ method: "POST" })
     const { data: booking, error } = await supabase
       .from("bookings")
       .insert({
-        client_name: clientName,
-        session_type: sessionType,
-        shoot_at: shootAt.iso,
+        client_name: validated.clientName,
+        session_type: validated.sessionType,
+        shoot_at: validated.shootAtIso,
         phone_number: data.phone_number?.trim() || null,
         notes: data.notes?.trim() || null,
         status: "Pending",
@@ -93,30 +81,17 @@ export const createBooking = createServerFn({ method: "POST" })
   });
 
 export const createAdminBooking = createServerFn({ method: "POST" })
-  .validator(
-    (data: {
-      client_name: string;
-      session_type: string;
-      shoot_at: string;
-      phone_number?: string;
-      notes?: string;
-      status?: BookingStatus;
-    }) => data,
-  )
+  .validator(zodValidator(createAdminBookingSchema))
   .handler(async ({ data }) => {
     await requireAdmin();
-    const clientName = data.client_name.trim();
-    const sessionType = data.session_type.trim();
-    const shootAt = parseShootAt(data.shoot_at);
+    const validated = validateBookingCoreFields(data);
     const status = data.status ?? "Pending";
 
-    if (clientName.length < 1) return { error: "Name is required.", booking: null };
-    if (sessionType.length < 1) return { error: "Session type is required.", booking: null };
-    if ("error" in shootAt) return { error: shootAt.error, booking: null };
+    if ("error" in validated) return { error: validated.error, booking: null };
     if (!isBookingStatus(status)) return { error: "Invalid status.", booking: null };
 
     const settings = await loadSiteSettings();
-    if (!isAllowedCategory(sessionType, settings.session_types)) {
+    if (!isAllowedCategory(validated.sessionType, settings.session_types)) {
       return { error: "Invalid session type.", booking: null };
     }
 
@@ -124,9 +99,9 @@ export const createAdminBooking = createServerFn({ method: "POST" })
     const { data: booking, error } = await supabase
       .from("bookings")
       .insert({
-        client_name: clientName,
-        session_type: sessionType,
-        shoot_at: shootAt.iso,
+        client_name: validated.clientName,
+        session_type: validated.sessionType,
+        shoot_at: validated.shootAtIso,
         phone_number: data.phone_number?.trim() || null,
         notes: data.notes?.trim() || null,
         status,
@@ -139,7 +114,7 @@ export const createAdminBooking = createServerFn({ method: "POST" })
   });
 
 export const updateBookingStatus = createServerFn({ method: "POST" })
-  .validator((data: { id: string; status: BookingStatus }) => data)
+  .validator(zodValidator(updateBookingStatusSchema))
   .handler(async ({ data }) => {
     await requireAdmin();
     if (!isBookingStatus(data.status)) return { error: "Invalid status." };
@@ -155,7 +130,7 @@ export const updateBookingStatus = createServerFn({ method: "POST" })
   });
 
 export const deleteBooking = createServerFn({ method: "POST" })
-  .validator((data: { id: string }) => data)
+  .validator(zodValidator(bookingIdSchema))
   .handler(async ({ data }) => {
     await requireAdmin();
     const supabase = getSupabaseServerClient();
@@ -165,7 +140,7 @@ export const deleteBooking = createServerFn({ method: "POST" })
   });
 
 export const fetchAdminBooking = createServerFn({ method: "GET" })
-  .validator((data: { id: string }) => data)
+  .validator(zodValidator(bookingIdSchema))
   .handler(async ({ data }): Promise<DbBooking | null> => {
     await requireAdmin();
     const supabase = getSupabaseServerClient();
@@ -180,31 +155,19 @@ export const fetchAdminBooking = createServerFn({ method: "GET" })
   });
 
 export const updateBooking = createServerFn({ method: "POST" })
-  .validator(
-    (data: {
-      id: string;
-      client_name: string;
-      session_type: string;
-      shoot_at: string;
-      phone_number?: string;
-      notes?: string;
-      status: BookingStatus;
-      project_id?: string | null;
-      client_paid_at?: string | null;
-    }) => data,
-  )
+  .validator(zodValidator(updateBookingSchema))
   .handler(async ({ data }) => {
     await requireAdmin();
 
-    const clientName = data.client_name.trim();
-    const sessionType = data.session_type.trim();
-    const shootAt = parseShootAt(data.shoot_at);
+    const validated = validateBookingCoreFields(data);
     const status = data.status;
 
-    if (clientName.length < 1) return { error: "Name is required.", booking: null };
-    if (sessionType.length < 1) return { error: "Session type is required.", booking: null };
-    if ("error" in shootAt) return { error: shootAt.error, booking: null };
+    if ("error" in validated) return { error: validated.error, booking: null };
     if (!isBookingStatus(status)) return { error: "Invalid status.", booking: null };
+
+    const clientName = validated.clientName;
+    const sessionType = validated.sessionType;
+    const shootAtIso = validated.shootAtIso;
 
     const supabase = getSupabaseServerClient();
     const projectResult = await resolveProjectId(supabase, data.project_id);
@@ -234,7 +197,7 @@ export const updateBooking = createServerFn({ method: "POST" })
     let clientPaidAt =
       data.client_paid_at !== undefined
         ? data.client_paid_at
-        : (existing?.client_paid_at as string | null | undefined) ?? null;
+        : ((existing?.client_paid_at as string | null | undefined) ?? null);
 
     if (projectIdChanged && resolvedProjectId) {
       const { data: project } = await supabase
@@ -242,7 +205,10 @@ export const updateBooking = createServerFn({ method: "POST" })
         .select("client_paid_at")
         .eq("id", resolvedProjectId)
         .maybeSingle();
-      clientPaidAt = mergePaidOnLink(clientPaidAt, (project?.client_paid_at as string | null) ?? null);
+      clientPaidAt = mergePaidOnLink(
+        clientPaidAt,
+        (project?.client_paid_at as string | null) ?? null,
+      );
     }
 
     const { data: booking, error } = await supabase
@@ -250,7 +216,7 @@ export const updateBooking = createServerFn({ method: "POST" })
       .update({
         client_name: clientName,
         session_type: sessionType,
-        shoot_at: shootAt.iso,
+        shoot_at: shootAtIso,
         phone_number: data.phone_number?.trim() || null,
         notes: data.notes?.trim() || null,
         status,
@@ -265,7 +231,8 @@ export const updateBooking = createServerFn({ method: "POST" })
     if (error) return { error: error.message, booking: null };
 
     if (resolvedProjectId) {
-      await syncBookingPaidToProject(supabase, resolvedProjectId, clientPaidAt);
+      const syncResult = await syncBookingPaidToProject(supabase, resolvedProjectId, clientPaidAt);
+      if (syncResult.error) return { error: syncResult.error, booking: null };
     }
 
     return { error: null, booking: booking as DbBooking };

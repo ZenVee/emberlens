@@ -30,7 +30,13 @@ type PhotoEditDialogProps = {
   onSave: (photo: DbPhoto) => void | Promise<void>;
 };
 
-export function PhotoEditDialog({ photo, categories, folders, onClose, onSave }: PhotoEditDialogProps) {
+export function PhotoEditDialog({
+  photo,
+  categories,
+  folders,
+  onClose,
+  onSave,
+}: PhotoEditDialogProps) {
   const [draft, setDraft] = useState<DbPhoto | null>(photo);
   const [previewMode, setPreviewMode] = useState<PreviewMode>("original");
 
@@ -59,7 +65,7 @@ export function PhotoEditDialog({ photo, categories, folders, onClose, onSave }:
   const previewSrc =
     previewMode === "watermarked" && hasWatermark
       ? draft!.watermarked_cdn_url!
-      : draft?.cdn_url ?? "";
+      : (draft?.cdn_url ?? "");
 
   const { status: saveStatus, error: saveError } = useAutoSave(
     draft,
@@ -88,7 +94,9 @@ export function PhotoEditDialog({ photo, categories, folders, onClose, onSave }:
       <DialogContent className="gap-0 overflow-hidden rounded-2xl border-border bg-card p-0 sm:max-w-2xl">
         <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
           <DialogTitle className="font-display text-xl">Edit photo</DialogTitle>
-          <DialogDescription>Update metadata and preview the watermarked version.</DialogDescription>
+          <DialogDescription>
+            Update metadata and preview the watermarked version.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-6 p-6 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -112,11 +120,7 @@ export function PhotoEditDialog({ photo, categories, folders, onClose, onSave }:
 
             <div className="relative aspect-square overflow-hidden rounded-xl border border-border/60 bg-secondary">
               {previewSrc ? (
-                <img
-                  src={previewSrc}
-                  alt={draft.title}
-                  className="h-full w-full object-cover"
-                />
+                <img src={previewSrc} alt={draft.title} className="h-full w-full object-cover" />
               ) : (
                 <div className="grid h-full place-items-center text-muted-foreground">
                   <ImageIcon className="h-10 w-10 opacity-40" />
@@ -187,9 +191,7 @@ export function PhotoEditDialog({ photo, categories, folders, onClose, onSave }:
                 id="photo-edit-watermark"
                 checked={draft.public_watermarked}
                 disabled={!hasWatermark}
-                onCheckedChange={(checked) =>
-                  setDraft({ ...draft, public_watermarked: checked })
-                }
+                onCheckedChange={(checked) => setDraft({ ...draft, public_watermarked: checked })}
               />
             </div>
             {!hasWatermark && (
@@ -240,13 +242,7 @@ function PreviewToggle({
   );
 }
 
-function StatusPill({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: "success" | "muted" | "accent";
-}) {
+function StatusPill({ label, tone }: { label: string; tone: "success" | "muted" | "accent" }) {
   return (
     <span
       className={cn(

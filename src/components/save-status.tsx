@@ -14,7 +14,9 @@ export function SaveStatus({
 }) {
   if (status === "pending" || status === "saving") {
     return (
-      <span className={cn("inline-flex items-center gap-1.5 text-sm text-muted-foreground", className)}>
+      <span
+        className={cn("inline-flex items-center gap-1.5 text-sm text-muted-foreground", className)}
+      >
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
         Saving…
       </span>
@@ -31,11 +33,7 @@ export function SaveStatus({
   }
 
   if (status === "error" && error) {
-    return (
-      <span className={cn("text-sm text-destructive", className)}>
-        {error}
-      </span>
-    );
+    return <span className={cn("text-sm text-destructive", className)}>{error}</span>;
   }
 
   return null;

@@ -1,18 +1,22 @@
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { Plus, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
 
-import { useAdminPageMeta } from "@/components/admin-page-meta";
+import { CreateProjectDialog } from "@/components/admin/projects/create-project-dialog";
+import { useAdminPageMeta } from "@/components/use-admin-page-meta";
 import { AdminLoading } from "@/components/admin-loading";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { AppSelect } from "@/components/app-select";
 import { prefetchAdminProject, useAdminProjects } from "@/lib/admin-queries";
 import { categorySelectOptions } from "@/lib/categories";
-import { formatShootDate, type PhotoCategory } from "@/lib/media-types";
-import { createProject, deleteProject, updateProject } from "@/lib/media";
-import { adminPhotosQueryKey, adminProjectPhotoGroupsQueryKey, adminProjectsQueryKey } from "@/lib/query-keys";
+import { formatShootDate } from "@/lib/media-types";
+import {
+  useCreateProjectMutation,
+  useDeleteProjectMutation,
+  useToggleProjectPublishedMutation,
+} from "@/lib/mutations/projects";
+import { mutationErrorMessage } from "@/lib/mutations/shared";
+import type { CreateProjectFormValues } from "@/lib/schemas/project-form";
 import { useSiteSettings } from "@/lib/site-settings-queries";
 
 export const Route = createFileRoute("/admin/projects")({
@@ -32,84 +36,55 @@ function AdminProjectsList() {
 
   const { data: projects = [], isPending, isError, error: loadError } = useAdminProjects();
   const queryClient = useQueryClient();
+  const createMutation = useCreateProjectMutation();
+  const deleteMutation = useDeleteProjectMutation();
+  const togglePublishedMutation = useToggleProjectPublishedMutation();
   const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [form, setForm] = useState({
-    title: "",
-    client: "",
-    description: "",
-    category: settings.project_categories[0] ?? "Portrait",
-    shoot_date: "",
+  const defaultCategory = settings.project_categories[0] ?? "Portrait";
+
+  useAdminPageMeta({
+    title: "Projects",
+    subtitle: `${projects.length} projects in your portfolio`,
   });
 
-  const createFn = useServerFn(createProject);
-  const updateFn = useServerFn(updateProject);
-  const deleteFn = useServerFn(deleteProject);
-
-  useAdminPageMeta({ title: "Projects", subtitle: `${projects.length} projects in your portfolio` });
-
-  function updateProjects(updater: (prev: typeof projects) => typeof projects) {
-    queryClient.setQueryData(adminProjectsQueryKey, (prev: typeof projects | undefined) =>
-      updater(prev ?? []),
-    );
-  }
-
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setCreating(true);
+  async function handleCreate(values: CreateProjectFormValues) {
     setError(null);
-    const result = await createFn({ data: form });
-    setCreating(false);
-    if (result.error || !result.project) {
-      setError(result.error ?? "Could not create project.");
-      return;
+    try {
+      await createMutation.mutateAsync(values);
+      setShowCreate(false);
+    } catch (err) {
+      setError(mutationErrorMessage(err, "Could not create project."));
     }
-    updateProjects((prev) => [
-      {
-        ...result.project!,
-        photoCount: 0,
-        coverUrl: null,
-        project_photos: [{ count: 0 }],
-        cover: null,
-      },
-      ...prev,
-    ]);
-    setShowCreate(false);
-    setForm({ title: "", client: "", description: "", category: "Portrait", shoot_date: "" });
   }
 
   async function togglePublished(id: string, published: boolean) {
-    const result = await updateFn({ data: { id, published: !published } });
-    if (result.error) {
-      setError(result.error);
-      return;
+    setError(null);
+    try {
+      await togglePublishedMutation.mutateAsync({ id, published });
+    } catch (err) {
+      setError(mutationErrorMessage(err, "Could not update project."));
     }
-    updateProjects((prev) => prev.map((p) => (p.id === id ? { ...p, published: !published } : p)));
   }
 
   async function confirmDelete() {
     if (!deleteTarget) return;
-    setDeleting(true);
     setError(null);
-    const result = await deleteFn({ data: { id: deleteTarget.id } });
-    setDeleting(false);
-    if (result.error) {
-      setError(result.error);
-      return;
+    try {
+      await deleteMutation.mutateAsync(deleteTarget.id);
+      setDeleteTarget(null);
+    } catch (err) {
+      setError(mutationErrorMessage(err, "Could not delete project."));
     }
-    updateProjects((prev) => prev.filter((p) => p.id !== deleteTarget.id));
-    void queryClient.invalidateQueries({ queryKey: adminPhotosQueryKey });
-    void queryClient.invalidateQueries({ queryKey: adminProjectPhotoGroupsQueryKey });
-    setDeleteTarget(null);
   }
 
   return (
     <>
       <div className="mb-6 flex items-center justify-between gap-3">
-        <p className="text-sm text-muted-foreground">Manage case studies and client deliverables.</p>
+        <p className="text-sm text-muted-foreground">
+          Manage case studies and client deliverables.
+        </p>
         <button
           type="button"
           onClick={() => setShowCreate(true)}
@@ -199,7 +174,11 @@ function AdminProjectsList() {
                     className="grid h-9 w-9 place-items-center rounded-full border border-border text-muted-foreground hover:bg-secondary"
                     title={pr.published ? "Unpublish" : "Publish"}
                   >
-                    {pr.published ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    {pr.published ? (
+                      <EyeOff className="h-3.5 w-3.5" />
+                    ) : (
+                      <Eye className="h-3.5 w-3.5" />
+                    )}
                   </button>
                   <button
                     type="button"
@@ -218,7 +197,7 @@ function AdminProjectsList() {
       <ConfirmDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
-          if (!open && !deleting) setDeleteTarget(null);
+          if (!open && !deleteMutation.isPending) setDeleteTarget(null);
         }}
         title="Delete project"
         description={
@@ -228,90 +207,19 @@ function AdminProjectsList() {
         }
         confirmLabel="Delete"
         destructive
-        loading={deleting}
+        loading={deleteMutation.isPending}
         onConfirm={confirmDelete}
       />
 
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <form
-            onSubmit={(e) => void handleCreate(e)}
-            className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-card"
-          >
-            <h2 className="font-display text-xl">New project</h2>
-            <div className="mt-4 grid gap-4">
-              <Field label="Title" value={form.title} onChange={(v) => setForm({ ...form, title: v })} required />
-              <Field label="Client" value={form.client} onChange={(v) => setForm({ ...form, client: v })} />
-              <label className="block space-y-2 text-sm">
-                <span className="text-muted-foreground">Category</span>
-                <AppSelect
-                  value={form.category}
-                  onValueChange={(v) => setForm({ ...form, category: v as PhotoCategory })}
-                  options={projectCategoryOptions}
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="text-muted-foreground">Shoot date</span>
-                <input
-                  type="date"
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ember"
-                  value={form.shoot_date}
-                  onChange={(e) => setForm({ ...form, shoot_date: e.target.value })}
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="text-muted-foreground">Description</span>
-                <textarea
-                  rows={3}
-                  className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ember"
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                />
-              </label>
-            </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowCreate(false)}
-                className="rounded-full border border-border px-4 py-2 text-sm hover:bg-secondary"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={creating}
-                className="rounded-full bg-gradient-ember px-4 py-2 text-sm text-primary-foreground shadow-glow disabled:opacity-60"
-              >
-                {creating ? "Creating…" : "Create"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-    </>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  required,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  required?: boolean;
-}) {
-  return (
-    <label className="block text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <input
-        required={required}
-        className="mt-1 w-full rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none focus:border-ember"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+      <CreateProjectDialog
+        open={showCreate}
+        onOpenChange={setShowCreate}
+        defaultCategory={defaultCategory}
+        projectCategoryOptions={projectCategoryOptions}
+        submitting={createMutation.isPending}
+        error={error}
+        onSubmit={handleCreate}
       />
-    </label>
+    </>
   );
 }

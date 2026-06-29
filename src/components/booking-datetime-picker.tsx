@@ -118,8 +118,7 @@ export function BookingDateTimePicker({ id, value, onChange }: BookingDateTimePi
             classNames={{
               month_caption: "font-display text-base text-foreground",
               weekday: "text-ember text-[0.7rem] font-medium uppercase tracking-wider",
-              button_previous:
-                "border-ember/30 bg-ember/5 hover:border-ember/50 hover:bg-ember/15",
+              button_previous: "border-ember/30 bg-ember/5 hover:border-ember/50 hover:bg-ember/15",
               button_next: "border-ember/30 bg-ember/5 hover:border-ember/50 hover:bg-ember/15",
               today: "bg-ember/15 text-ember font-semibold rounded-lg",
               outside: "text-muted-foreground/40",

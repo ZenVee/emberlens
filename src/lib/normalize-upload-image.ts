@@ -31,7 +31,10 @@ export async function normalizeUploadImage(file: File): Promise<File> {
     });
 
     const baseName = file.name.replace(/\.[^.]+$/, "") || "photo";
-    return new File([blob], `${baseName}.jpg`, { type: "image/jpeg", lastModified: file.lastModified });
+    return new File([blob], `${baseName}.jpg`, {
+      type: "image/jpeg",
+      lastModified: file.lastModified,
+    });
   } finally {
     bitmap.close();
   }

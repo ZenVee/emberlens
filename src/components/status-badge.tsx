@@ -6,7 +6,9 @@ export function StatusBadge({ status }: { status: string }) {
     Completed: "bg-emerald-500/20 text-emerald-400",
   };
   return (
-    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${map[status] ?? "bg-secondary"}`}>
+    <span
+      className={`rounded-full px-2.5 py-1 text-xs font-medium ${map[status] ?? "bg-secondary"}`}
+    >
       {status}
     </span>
   );

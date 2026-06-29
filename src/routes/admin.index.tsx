@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 
-import { useAdminPageMeta } from "@/components/admin-page-meta";
+import { useAdminPageMeta } from "@/components/use-admin-page-meta";
 import { AdminLoading } from "@/components/admin-loading";
 import { StatusBadge } from "@/components/status-badge";
 import { useAdminBookings, useAdminPhotos, useAdminProjects } from "@/lib/admin-queries";
@@ -81,7 +81,10 @@ function Dashboard() {
       <div className="space-y-8">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-2xl border border-border/60 bg-card" />
+            <div
+              key={i}
+              className="h-28 animate-pulse rounded-2xl border border-border/60 bg-card"
+            />
           ))}
         </div>
         <AdminLoading variant="cards" />
@@ -108,7 +111,11 @@ function Dashboard() {
         <StatCard
           label="Projects"
           value={projects.length}
-          detail={draftProjects > 0 ? `${draftProjects} draft${draftProjects === 1 ? "" : "s"}` : `${publishedProjects} live`}
+          detail={
+            draftProjects > 0
+              ? `${draftProjects} draft${draftProjects === 1 ? "" : "s"}`
+              : `${publishedProjects} live`
+          }
           icon={FolderOpen}
           to="/admin/projects"
         />

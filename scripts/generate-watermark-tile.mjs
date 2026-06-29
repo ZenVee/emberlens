@@ -13,9 +13,7 @@ const STRIPE_COLOR = 0xffffff10;
 const STRIPE_PERIOD = 56;
 const out = join(root, "src/assets/watermark-tile.png");
 
-const font = new Uint8Array(
-  readFileSync(join(root, "src/assets/fonts/DejaVuSans-Bold.ttf")),
-);
+const font = new Uint8Array(readFileSync(join(root, "src/assets/fonts/DejaVuSans-Bold.ttf")));
 const text = await Image.renderText(font, FONT_SIZE, "EMBER LENS", TEXT_COLOR);
 const tile = new Image(TILE_WIDTH, TILE_HEIGHT);
 tile.fill(0x00000000);

@@ -10,12 +10,13 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { fetchUser, type AuthUser } from "../lib/auth";
+import type { AuthUser } from "../lib/auth";
 import { authUserQueryKey, siteSettingsQueryKey } from "../lib/query-keys";
-import { DEFAULT_SITE_SETTINGS, type SiteSettings } from "../lib/site-settings-types";
+import type { SiteSettings } from "../lib/site-settings-types";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "../components/theme-provider";
 import { SiteThemeProvider } from "../components/site-theme-provider";
+import { Toaster } from "../components/ui/sonner";
 
 async function fetchUserQuery() {
   const { fetchUser: fetchUserFn } = await import("../lib/auth");
@@ -117,9 +118,15 @@ export const Route = createRootRouteWithContext<{
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Ember Lens — Los Santos Photography" },
-      { name: "description", content: "Ember Lens is a photography studio capturing Los Santos — one frame at a time." },
+      {
+        name: "description",
+        content: "Ember Lens is a photography studio capturing Los Santos — one frame at a time.",
+      },
       { property: "og:title", content: "Ember Lens — Los Santos Photography" },
-      { property: "og:description", content: "Cinematic portrait, event, automotive, and lifestyle photography in Los Santos." },
+      {
+        property: "og:description",
+        content: "Cinematic portrait, event, automotive, and lifestyle photography in Los Santos.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
@@ -157,6 +164,7 @@ function RootComponent() {
       <ThemeProvider>
         <SiteThemeProvider />
         <Outlet />
+        <Toaster />
       </ThemeProvider>
     </QueryClientProvider>
   );

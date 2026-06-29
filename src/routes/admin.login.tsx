@@ -70,7 +70,9 @@ function AdminLogin() {
         </Link>
 
         <h1 className="font-display text-3xl">Studio access</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Sign in with Discord to manage photos, projects, and bookings.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Sign in with Discord to manage photos, projects, and bookings.
+        </p>
 
         {error && (
           <p className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -89,7 +91,10 @@ function AdminLogin() {
         </button>
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Discord sign-in only. <Link to="/" className="text-ember hover:underline">Back to site</Link>
+          Discord sign-in only.{" "}
+          <Link to="/" className="text-ember hover:underline">
+            Back to site
+          </Link>
         </p>
       </div>
     </div>

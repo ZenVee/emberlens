@@ -38,7 +38,9 @@ type PhotoUploadModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categories: readonly string[];
-  onUpload: (payload: UploadPhotoPayload) => Promise<{ error: string | null; photo: DbPhoto | null }>;
+  onUpload: (
+    payload: UploadPhotoPayload,
+  ) => Promise<{ error: string | null; photo: DbPhoto | null }>;
   onUploaded: (photos: DbPhoto[]) => void;
 };
 
@@ -156,9 +158,7 @@ export function PhotoUploadModal({
 
     const setItemProgress = (percent: number) => {
       setItems((prev) =>
-        prev.map((entry) =>
-          entry.id === item.id ? { ...entry, progress: percent } : entry,
-        ),
+        prev.map((entry) => (entry.id === item.id ? { ...entry, progress: percent } : entry)),
       );
     };
 
@@ -241,7 +241,9 @@ export function PhotoUploadModal({
     }
   }
 
-  const pendingCount = items.filter((item) => item.status === "pending" || item.status === "error").length;
+  const pendingCount = items.filter(
+    (item) => item.status === "pending" || item.status === "error",
+  ).length;
   const doneCount = items.filter((item) => item.status === "done").length;
   const uploadingItems = items.filter((item) => item.status === "uploading");
   const overallProgress =
@@ -296,7 +298,9 @@ export function PhotoUploadModal({
             />
             <ImagePlus className="mx-auto h-10 w-10 text-muted-foreground" />
             <p className="mt-3 text-sm font-medium">Drop images here or click to browse</p>
-            <p className="mt-1 text-xs text-muted-foreground">PNG, JPG, WebP, GIF — up to 15 MB each</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              PNG, JPG, WebP, GIF — up to 15 MB each
+            </p>
           </div>
 
           <label className="flex items-center justify-between gap-3 text-sm">
@@ -350,9 +354,7 @@ export function PhotoUploadModal({
                         <Progress value={item.progress} className="h-1.5 bg-secondary" />
                       </div>
                     )}
-                    {item.status === "done" && (
-                      <p className="text-xs text-emerald-400">Uploaded</p>
-                    )}
+                    {item.status === "done" && <p className="text-xs text-emerald-400">Uploaded</p>}
                     {item.status === "error" && (
                       <p className="text-xs text-destructive">{item.error}</p>
                     )}

@@ -1,7 +1,4 @@
-import {
-  DEFAULT_PHOTO_CATEGORIES,
-  type PhotoCategory,
-} from "./categories";
+import { DEFAULT_PHOTO_CATEGORIES, type PhotoCategory } from "./categories";
 
 export type { PhotoCategory } from "./categories";
 export { DEFAULT_PHOTO_CATEGORIES } from "./categories";

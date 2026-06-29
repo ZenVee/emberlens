@@ -1,14 +1,13 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
-type Theme = "dark" | "light";
-
-const ThemeContext = createContext<{ theme: Theme; toggle: () => void } | null>(null);
+import { ThemeContext, type Theme } from "./theme-context";
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark");
 
   useEffect(() => {
-    const stored = (typeof window !== "undefined" && localStorage.getItem("ember-theme")) as Theme | null;
+    const stored = (typeof window !== "undefined" &&
+      localStorage.getItem("ember-theme")) as Theme | null;
     if (stored === "light" || stored === "dark") setTheme(stored);
   }, []);
 
@@ -18,18 +17,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.classList.add(theme);
     try {
       localStorage.setItem("ember-theme", theme);
-    } catch {}
+    } catch {
+      // localStorage may be unavailable (private browsing, quota exceeded)
+    }
   }, [theme]);
 
   return (
-    <ThemeContext.Provider value={{ theme, toggle: () => setTheme((t) => (t === "dark" ? "light" : "dark")) }}>
+    <ThemeContext.Provider
+      value={{ theme, toggle: () => setTheme((t) => (t === "dark" ? "light" : "dark")) }}
+    >
       {children}
     </ThemeContext.Provider>
   );
 }
 
-export function useTheme() {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) return { theme: "dark" as Theme, toggle: () => {} };
-  return ctx;
-}
+export type { Theme } from "./theme-context";

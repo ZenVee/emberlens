@@ -1,7 +1,17 @@
 import { Link, useRouteContext, useRouter, useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
-import { Camera, LayoutDashboard, Images, FolderOpen, CalendarCheck, Settings, LogOut, Bell, ExternalLink } from "lucide-react";
+import {
+  Camera,
+  LayoutDashboard,
+  Images,
+  FolderOpen,
+  CalendarCheck,
+  Settings,
+  LogOut,
+  Bell,
+  ExternalLink,
+} from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { prefetchAdminRoute } from "@/lib/admin-queries";
@@ -17,7 +27,15 @@ const nav = [
   { to: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
-export function AdminShell({ title, subtitle, children }: { title: string; subtitle?: string; children: ReactNode }) {
+export function AdminShell({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+}) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [mobileOpen, setMobileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
@@ -26,12 +44,13 @@ export function AdminShell({ title, subtitle, children }: { title: string; subti
   const signOutFn = useServerFn(signOut);
   const { user } = useRouteContext({ from: "__root__" });
 
-  const initials = user?.name
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase() || "EL";
+  const initials =
+    user?.name
+      .split(/\s+/)
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "EL";
 
   async function handleSignOut() {
     setSigningOut(true);
@@ -138,7 +157,10 @@ export function AdminShell({ title, subtitle, children }: { title: string; subti
       </div>
 
       {mobileOpen && (
-        <div className="fixed inset-0 z-30 bg-black/50 md:hidden" onClick={() => setMobileOpen(false)} />
+        <div
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
       )}
     </div>
   );

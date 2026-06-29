@@ -48,18 +48,25 @@ export function normalizeHexColor(value: string, fallback: string): string {
   return trimmed.toLowerCase();
 }
 
-export function normalizeThemeFont(value: string, options: readonly { value: string }[], fallback: string): string {
+export function normalizeThemeFont(
+  value: string,
+  options: readonly { value: string }[],
+  fallback: string,
+): string {
   const trimmed = value.trim();
   return options.some((option) => option.value === trimmed) ? trimmed : fallback;
 }
 
 export function normalizeBorderRadius(value: string, fallback: string): string {
   const trimmed = value.trim();
-  return THEME_BORDER_RADIUS_OPTIONS.some((option) => option.value === trimmed) ? trimmed : fallback;
+  return THEME_BORDER_RADIUS_OPTIONS.some((option) => option.value === trimmed)
+    ? trimmed
+    : fallback;
 }
 
 export function fontStack(name: string, kind: "sans" | "display"): string {
-  const fallback = kind === "sans" ? "ui-sans-serif, system-ui, sans-serif" : "ui-serif, Georgia, serif";
+  const fallback =
+    kind === "sans" ? "ui-sans-serif, system-ui, sans-serif" : "ui-serif, Georgia, serif";
   return `"${name}", ${fallback}`;
 }
 
@@ -79,7 +86,11 @@ export function applySiteTheme(theme: SiteThemeSettings): void {
   const accent = normalizeHexColor(theme.theme_accent_color, "#e8b49a");
   const ember = normalizeHexColor(theme.theme_ember_color, "#d99548");
   const fontSans = normalizeThemeFont(theme.theme_font_sans, THEME_FONT_SANS_OPTIONS, "Inter");
-  const fontDisplay = normalizeThemeFont(theme.theme_font_display, THEME_FONT_DISPLAY_OPTIONS, "Fraunces");
+  const fontDisplay = normalizeThemeFont(
+    theme.theme_font_display,
+    THEME_FONT_DISPLAY_OPTIONS,
+    "Fraunces",
+  );
   const radius = normalizeBorderRadius(theme.theme_border_radius, "1rem");
 
   const root = document.documentElement;
@@ -93,11 +104,11 @@ export function applySiteTheme(theme: SiteThemeSettings): void {
   root.style.setProperty("--radius", radius);
   root.style.setProperty("--site-font-sans", fontStack(fontSans, "sans"));
   root.style.setProperty("--site-font-display", fontStack(fontDisplay, "display"));
+  root.style.setProperty("--gradient-ember", `linear-gradient(135deg, ${primary}, ${accent})`);
   root.style.setProperty(
-    "--gradient-ember",
-    `linear-gradient(135deg, ${primary}, ${accent})`,
+    "--shadow-glow",
+    `0 0 40px color-mix(in srgb, ${primary} 25%, transparent)`,
   );
-  root.style.setProperty("--shadow-glow", `0 0 40px color-mix(in srgb, ${primary} 25%, transparent)`);
 
   let link = document.getElementById("site-theme-fonts") as HTMLLinkElement | null;
   const href = buildGoogleFontsUrl(fontSans, fontDisplay);

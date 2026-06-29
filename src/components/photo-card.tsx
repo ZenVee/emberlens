@@ -9,9 +9,20 @@ type Props = {
   watermarked?: boolean;
 };
 
-export function PhotoCard({ src, title, subtitle, onClick, aspect = "square", watermarked }: Props) {
+export function PhotoCard({
+  src,
+  title,
+  subtitle,
+  onClick,
+  aspect = "square",
+  watermarked,
+}: Props) {
   const aspectCls =
-    aspect === "portrait" ? "aspect-[3/4]" : aspect === "landscape" ? "aspect-[4/3]" : "aspect-square";
+    aspect === "portrait"
+      ? "aspect-[3/4]"
+      : aspect === "landscape"
+        ? "aspect-[4/3]"
+        : "aspect-square";
 
   return (
     <div

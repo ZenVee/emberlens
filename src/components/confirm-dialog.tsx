@@ -58,7 +58,8 @@ export function ConfirmDialog({
             className={cn(
               buttonVariants({ variant: destructive ? "destructive" : "default" }),
               "rounded-full",
-              !destructive && "bg-gradient-ember text-primary-foreground shadow-glow hover:opacity-90",
+              !destructive &&
+                "bg-gradient-ember text-primary-foreground shadow-glow hover:opacity-90",
             )}
           >
             {loading ? "Working…" : confirmLabel}

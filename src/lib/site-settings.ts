@@ -13,11 +13,12 @@ import {
   normalizeBorderRadius,
   normalizeHexColor,
   normalizeThemeFont,
-  THEME_BORDER_RADIUS_OPTIONS,
   THEME_FONT_DISPLAY_OPTIONS,
   THEME_FONT_SANS_OPTIONS,
 } from "./site-theme";
-import type { SiteSettings, SiteSettingsPatch } from "./site-settings-types";
+import type { SiteSettings } from "./site-settings-types";
+import { zodValidator } from "./schemas/parse";
+import { siteSettingsPatchSchema, uploadHeroImageSchema } from "./schemas/site-settings";
 
 const MAX_HERO_BYTES = 15 * 1024 * 1024;
 
@@ -28,18 +29,22 @@ function extensionForMime(mimeType: string) {
   return "jpg";
 }
 
-export const fetchSiteSettings = createServerFn({ method: "GET" }).handler(async (): Promise<SiteSettings> => {
-  return loadSiteSettings();
-});
+export const fetchSiteSettings = createServerFn({ method: "GET" }).handler(
+  async (): Promise<SiteSettings> => {
+    return loadSiteSettings();
+  },
+);
 
-export const fetchAdminSiteSettings = createServerFn({ method: "GET" }).handler(async (): Promise<SiteSettings> => {
-  const { requireAdmin } = await import("./admin");
-  await requireAdmin();
-  return loadSiteSettings();
-});
+export const fetchAdminSiteSettings = createServerFn({ method: "GET" }).handler(
+  async (): Promise<SiteSettings> => {
+    const { requireAdmin } = await import("./admin");
+    await requireAdmin();
+    return loadSiteSettings();
+  },
+);
 
 export const updateSiteSettings = createServerFn({ method: "POST" })
-  .validator((data: SiteSettingsPatch) => data)
+  .validator(zodValidator(siteSettingsPatchSchema))
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("./admin");
     await requireAdmin();
@@ -54,18 +59,25 @@ export const updateSiteSettings = createServerFn({ method: "POST" })
     if (data.hero_title !== undefined) patch.hero_title = data.hero_title.trim();
     if (data.hero_text !== undefined) patch.hero_text = data.hero_text.trim();
     if (data.footer_tagline !== undefined) patch.footer_tagline = data.footer_tagline.trim();
-    if (data.footer_studio_heading !== undefined) patch.footer_studio_heading = data.footer_studio_heading.trim();
-    if (data.footer_studio_body !== undefined) patch.footer_studio_body = data.footer_studio_body.trim();
-    if (data.footer_contact_heading !== undefined) patch.footer_contact_heading = data.footer_contact_heading.trim();
-    if (data.footer_contact_body !== undefined) patch.footer_contact_body = data.footer_contact_body.trim();
+    if (data.footer_studio_heading !== undefined)
+      patch.footer_studio_heading = data.footer_studio_heading.trim();
+    if (data.footer_studio_body !== undefined)
+      patch.footer_studio_body = data.footer_studio_body.trim();
+    if (data.footer_contact_heading !== undefined)
+      patch.footer_contact_heading = data.footer_contact_heading.trim();
+    if (data.footer_contact_body !== undefined)
+      patch.footer_contact_body = data.footer_contact_body.trim();
     if (data.footer_copyright !== undefined) patch.footer_copyright = data.footer_copyright.trim();
     if (data.gallery_eyebrow !== undefined) patch.gallery_eyebrow = data.gallery_eyebrow.trim();
     if (data.gallery_title !== undefined) patch.gallery_title = data.gallery_title.trim();
-    if (data.gallery_description !== undefined) patch.gallery_description = data.gallery_description.trim();
-    if (data.gallery_show_categories !== undefined) patch.gallery_show_categories = data.gallery_show_categories;
+    if (data.gallery_description !== undefined)
+      patch.gallery_description = data.gallery_description.trim();
+    if (data.gallery_show_categories !== undefined)
+      patch.gallery_show_categories = data.gallery_show_categories;
     if (data.projects_eyebrow !== undefined) patch.projects_eyebrow = data.projects_eyebrow.trim();
     if (data.projects_title !== undefined) patch.projects_title = data.projects_title.trim();
-    if (data.projects_description !== undefined) patch.projects_description = data.projects_description.trim();
+    if (data.projects_description !== undefined)
+      patch.projects_description = data.projects_description.trim();
     if (data.services_eyebrow !== undefined) patch.services_eyebrow = data.services_eyebrow.trim();
     if (data.services_title !== undefined) patch.services_title = data.services_title.trim();
     if (data.services !== undefined) {
@@ -78,16 +90,23 @@ export const updateSiteSettings = createServerFn({ method: "POST" })
         .filter((service) => service.title.length > 0);
     }
     if (data.photo_categories !== undefined) {
-      patch.photo_categories = normalizeCategoryList(data.photo_categories, DEFAULT_PHOTO_CATEGORIES);
+      patch.photo_categories = normalizeCategoryList(
+        data.photo_categories,
+        DEFAULT_PHOTO_CATEGORIES,
+      );
     }
     if (data.project_categories !== undefined) {
-      patch.project_categories = normalizeCategoryList(data.project_categories, DEFAULT_PROJECT_CATEGORIES);
+      patch.project_categories = normalizeCategoryList(
+        data.project_categories,
+        DEFAULT_PROJECT_CATEGORIES,
+      );
     }
     if (data.session_types !== undefined) {
       patch.session_types = normalizeCategoryList(data.session_types, DEFAULT_SESSION_TYPES);
     }
     if (data.hero_image_url !== undefined) patch.hero_image_url = data.hero_image_url;
-    if (data.hero_image_fivemanage_id !== undefined) patch.hero_image_fivemanage_id = data.hero_image_fivemanage_id;
+    if (data.hero_image_fivemanage_id !== undefined)
+      patch.hero_image_fivemanage_id = data.hero_image_fivemanage_id;
     if (data.theme_primary_color !== undefined) {
       patch.theme_primary_color = normalizeHexColor(data.theme_primary_color, "#e5a050");
     }
@@ -101,7 +120,11 @@ export const updateSiteSettings = createServerFn({ method: "POST" })
       patch.theme_ember_color = normalizeHexColor(data.theme_ember_color, "#d99548");
     }
     if (data.theme_font_sans !== undefined) {
-      patch.theme_font_sans = normalizeThemeFont(data.theme_font_sans, THEME_FONT_SANS_OPTIONS, "Inter");
+      patch.theme_font_sans = normalizeThemeFont(
+        data.theme_font_sans,
+        THEME_FONT_SANS_OPTIONS,
+        "Inter",
+      );
     }
     if (data.theme_font_display !== undefined) {
       patch.theme_font_display = normalizeThemeFont(
@@ -114,7 +137,7 @@ export const updateSiteSettings = createServerFn({ method: "POST" })
       patch.theme_border_radius = normalizeBorderRadius(data.theme_border_radius, "1rem");
     }
 
-    const { data: updated, error } = await supabase
+    const { error } = await supabase
       .from("site_settings")
       .update(patch)
       .eq("id", 1)
@@ -126,7 +149,7 @@ export const updateSiteSettings = createServerFn({ method: "POST" })
   });
 
 export const uploadHeroImage = createServerFn({ method: "POST" })
-  .validator((data: { fileBase64: string; mimeType: string; filename: string }) => data)
+  .validator(zodValidator(uploadHeroImageSchema))
   .handler(async ({ data }) => {
     const { requireAdmin } = await import("./admin");
     await requireAdmin();
@@ -153,7 +176,7 @@ export const uploadHeroImage = createServerFn({ method: "POST" })
       metadata: { type: "hero" },
     });
 
-    const { data: updated, error } = await supabase
+    const { error } = await supabase
       .from("site_settings")
       .update({
         hero_image_url: upload.url,
@@ -187,7 +210,7 @@ export const removeHeroImage = createServerFn({ method: "POST" }).handler(async 
     .eq("id", 1)
     .maybeSingle();
 
-  const { data: updated, error } = await supabase
+  const { error } = await supabase
     .from("site_settings")
     .update({
       hero_image_url: null,

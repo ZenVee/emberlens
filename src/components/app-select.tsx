@@ -30,12 +30,7 @@ export function AppSelect({
 }: AppSelectProps) {
   return (
     <Select value={value} onValueChange={onValueChange} disabled={disabled}>
-      <SelectTrigger
-        className={cn(
-          size === "sm" && "h-8 rounded-lg px-2.5 text-xs",
-          className,
-        )}
-      >
+      <SelectTrigger className={cn(size === "sm" && "h-8 rounded-lg px-2.5 text-xs", className)}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>

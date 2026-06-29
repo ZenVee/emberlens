@@ -10,7 +10,6 @@ import {
   normalizeBorderRadius,
   normalizeHexColor,
   normalizeThemeFont,
-  THEME_BORDER_RADIUS_OPTIONS,
   THEME_FONT_DISPLAY_OPTIONS,
   THEME_FONT_SANS_OPTIONS,
 } from "./site-theme";
