@@ -10,6 +10,7 @@ import {
   type PublicProjectDetail,
   type PublicProjectListItem,
 } from "../media-types";
+import { shuffleArray } from "../gallery-orientation";
 import { zodValidator } from "../schemas/parse";
 import { slugSchema } from "../schemas/media";
 import { getSupabaseServerClient } from "../supabase";
@@ -87,17 +88,20 @@ export const fetchProjectBySlug = createServerFn({ method: "GET" })
 
     const showWatermarks = projectPageWatermarked(typedProject);
 
-    const images: PublicPhoto[] = (links as { sort_order: number; photo: DbPhoto | null }[])
-      .map((link) => link.photo)
-      .filter((photo): photo is DbPhoto => photo !== null)
-      .map((photo) => ({
-        id: photo.id,
-        title: photo.title,
-        category: photo.category,
-        src: photoUrlForProject(photo, typedProject),
-        alt_text: photo.alt_text,
-        watermarked: showWatermarks,
-      }));
+    const images: PublicPhoto[] = shuffleArray(
+      (links as { sort_order: number; photo: DbPhoto | null }[])
+        .map((link) => link.photo)
+        .filter((photo): photo is DbPhoto => photo !== null)
+        .map((photo) => ({
+          id: photo.id,
+          title: photo.title,
+          category: photo.category,
+          src: photoUrlForProject(photo, typedProject),
+          alt_text: photo.alt_text,
+          watermarked: showWatermarks,
+          gallery_orientation: photo.gallery_orientation ?? "portrait",
+        })),
+    );
 
     const coverSrc = typedProject.cover
       ? photoUrlForProject(

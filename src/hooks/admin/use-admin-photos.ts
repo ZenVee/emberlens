@@ -376,6 +376,7 @@ export function useAdminPhotosPage() {
       category: updated.category,
       public_watermarked: updated.public_watermarked,
       folder_id: updated.folder_id,
+      gallery_orientation: updated.gallery_orientation,
     });
     updatePhotosInCache(queryClient, (prev) =>
       prev.map((p) => (p.id === updated.id ? updated : p)),

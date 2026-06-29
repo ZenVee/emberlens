@@ -3,7 +3,7 @@ import { loadSiteSettings } from "../site-settings-data";
 import type { getSupabaseServerClient } from "../supabase";
 
 export const PHOTO_SELECT =
-  "id, title, category, fivemanage_id, cdn_url, watermarked_cdn_url, original_url, alt_text, sort_order, featured, published, public_watermarked, folder_id, created_at, updated_at";
+  "id, title, category, fivemanage_id, cdn_url, watermarked_cdn_url, original_url, alt_text, sort_order, featured, published, public_watermarked, gallery_orientation, folder_id, created_at, updated_at";
 
 export const FOLDER_SELECT = "id, name, sort_order, created_at, updated_at";
 

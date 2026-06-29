@@ -2,7 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState } from "react";
 import { ArrowLeft, Calendar, User2, Tag, Lock, EyeOff } from "lucide-react";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
-import { PhotoCard } from "@/components/photo-card";
+import { EditorialMasonryGallery } from "@/components/editorial-masonry-gallery";
 import { Lightbox } from "@/components/lightbox";
 import { MediaImage } from "@/components/media-image";
 import { fetchProjectBySlug } from "@/lib/media";
@@ -114,22 +114,20 @@ function ProjectDetail() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+      <section className="mx-auto max-w-[90rem] px-2 py-16 sm:px-3 sm:py-20">
         {items.length === 0 ? (
           <p className="text-center text-muted-foreground">No photos in this project yet.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            {items.map((it, i) => (
-              <PhotoCard
-                key={i}
-                src={it.src}
-                title={it.title}
-                watermarked={it.watermarked}
-                aspect={i % 3 === 1 ? "portrait" : "landscape"}
-                onClick={() => setOpenIndex(i)}
-              />
-            ))}
-          </div>
+          <EditorialMasonryGallery
+            items={project.images.map((photo) => ({
+              id: photo.id,
+              src: photo.src,
+              title: photo.title,
+              watermarked: photo.watermarked,
+              orientation: photo.gallery_orientation,
+            }))}
+            onItemClick={setOpenIndex}
+          />
         )}
       </section>
 

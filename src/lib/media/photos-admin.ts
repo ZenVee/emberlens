@@ -80,6 +80,7 @@ export const uploadPhoto = createServerFn({ method: "POST" })
         watermarked_cdn_url: watermarkedCdnUrl,
         uploaded_by: user.id,
         folder_id: resolvedFolderId,
+        gallery_orientation: data.gallery_orientation ?? "portrait",
       })
       .select(PHOTO_SELECT)
       .single();
@@ -127,6 +128,9 @@ export const updatePhoto = createServerFn({ method: "POST" })
       patch.folder_id = typeof folderResult === "string" ? folderResult : null;
     }
     if (data.sort_order !== undefined) patch.sort_order = data.sort_order;
+    if (data.gallery_orientation !== undefined) {
+      patch.gallery_orientation = data.gallery_orientation;
+    }
 
     const { error } = await supabase.from("photos").update(patch).eq("id", data.id);
     if (error) return { error: error.message };

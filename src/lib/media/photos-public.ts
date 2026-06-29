@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
 import { toPublicPhoto, type DbPhoto, type PublicPhoto } from "../media-types";
+import { shuffleArray } from "../gallery-orientation";
 import { getSupabaseServerClient } from "../supabase";
 import { PHOTO_SELECT } from "./shared";
 
@@ -15,7 +16,7 @@ export const fetchPublishedPhotos = createServerFn({ method: "GET" }).handler(
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    return (data as DbPhoto[]).map(toPublicPhoto);
+    return shuffleArray((data as DbPhoto[]).map(toPublicPhoto));
   },
 );
 

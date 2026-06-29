@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const galleryOrientationSchema = z.enum(["portrait", "landscape"]);
+
 export const idSchema = z.object({
   id: z.string().min(1),
 });
@@ -20,6 +22,7 @@ export const uploadPhotoSchema = z.object({
   category: z.string().trim().min(1).max(80),
   projectId: z.string().min(1).optional(),
   folderId: z.string().nullable().optional(),
+  gallery_orientation: galleryOrientationSchema.optional(),
 });
 
 export const updatePhotoSchema = z.object({
@@ -31,6 +34,7 @@ export const updatePhotoSchema = z.object({
   public_watermarked: z.boolean().optional(),
   folder_id: z.string().nullable().optional(),
   sort_order: z.number().optional(),
+  gallery_orientation: galleryOrientationSchema.optional(),
 });
 
 export const bulkUpdatePhotosSchema = z.object({

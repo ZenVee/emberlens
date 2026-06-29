@@ -66,6 +66,7 @@ create table public.photos (
   featured boolean not null default false,
   published boolean not null default false,
   public_watermarked boolean not null default false,
+  gallery_orientation text not null default 'portrait' check (gallery_orientation in ('portrait', 'landscape')),
   folder_id uuid references public.photo_folders (id) on delete set null,
   uploaded_by uuid references auth.users (id) on delete set null,
   created_at timestamptz not null default now(),

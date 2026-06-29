@@ -1,5 +1,7 @@
 import { DEFAULT_PHOTO_CATEGORIES, type PhotoCategory } from "./categories";
+import type { GalleryOrientation } from "./gallery-orientation";
 
+export type { GalleryOrientation } from "./gallery-orientation";
 export type { PhotoCategory } from "./categories";
 export { DEFAULT_PHOTO_CATEGORIES } from "./categories";
 
@@ -33,6 +35,7 @@ export type DbPhoto = {
   featured: boolean;
   published: boolean;
   public_watermarked: boolean;
+  gallery_orientation: GalleryOrientation;
   folder_id: string | null;
   created_at: string;
   updated_at: string;
@@ -45,6 +48,7 @@ export type PublicPhoto = {
   src: string;
   alt_text: string | null;
   watermarked?: boolean;
+  gallery_orientation: GalleryOrientation;
 };
 
 export type DbProject = {
@@ -127,6 +131,7 @@ export function toPublicPhoto(photo: DbPhoto): PublicPhoto {
     src: publicPhotoSrc(photo, watermarked),
     alt_text: photo.alt_text,
     watermarked,
+    gallery_orientation: photo.gallery_orientation ?? "portrait",
   };
 }
 

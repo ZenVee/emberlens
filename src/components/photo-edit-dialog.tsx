@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { categorySelectOptions } from "@/lib/categories";
+import { GALLERY_ORIENTATION_OPTIONS } from "@/lib/gallery-orientation";
 import type { DbPhoto } from "@/lib/media-types";
 import { cn } from "@/lib/utils";
 
@@ -199,6 +200,23 @@ export function PhotoEditDialog({
                 }
                 options={folderOptions}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="photo-edit-orientation">Gallery layout</Label>
+              <AppSelect
+                value={draft.gallery_orientation ?? "portrait"}
+                onValueChange={(value) =>
+                  setDraft({
+                    ...draft,
+                    gallery_orientation: value as DbPhoto["gallery_orientation"],
+                  })
+                }
+                options={GALLERY_ORIENTATION_OPTIONS}
+              />
+              <p className="text-xs text-muted-foreground">
+                Portrait tiles are tall; wide images span two columns in the masonry grid.
+              </p>
             </div>
 
             <div className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background/40 px-4 py-3">

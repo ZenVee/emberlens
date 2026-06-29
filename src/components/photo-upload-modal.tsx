@@ -12,6 +12,11 @@ import {
 } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 import { categorySelectOptions } from "@/lib/categories";
+import {
+  detectGalleryOrientation,
+  GALLERY_ORIENTATION_OPTIONS,
+  type GalleryOrientation,
+} from "@/lib/gallery-orientation";
 import { type DbPhoto, type PhotoCategory } from "@/lib/media-types";
 import { normalizeUploadImage } from "@/lib/normalize-upload-image";
 
@@ -21,6 +26,7 @@ type UploadItem = {
   previewUrl: string;
   title: string;
   category: PhotoCategory;
+  gallery_orientation: GalleryOrientation;
   status: "pending" | "uploading" | "done" | "error";
   progress: number;
   error?: string;
@@ -32,6 +38,7 @@ type UploadPhotoPayload = {
   filename: string;
   title: string;
   category: PhotoCategory;
+  gallery_orientation: GalleryOrientation;
 };
 
 type PhotoUploadModalProps = {
@@ -122,17 +129,21 @@ export function PhotoUploadModal({
     const imageFiles = Array.from(files).filter((file) => file.type.startsWith("image/"));
     if (imageFiles.length === 0) return;
 
-    const next: UploadItem[] = imageFiles.map((file) => ({
-      id: crypto.randomUUID(),
-      file,
-      previewUrl: URL.createObjectURL(file),
-      title: titleFromFilename(file.name),
-      category: defaultCategory,
-      status: "pending",
-      progress: 0,
-    }));
-
-    setItems((prev) => [...prev, ...next]);
+    void (async () => {
+      const next: UploadItem[] = await Promise.all(
+        imageFiles.map(async (file) => ({
+          id: crypto.randomUUID(),
+          file,
+          previewUrl: URL.createObjectURL(file),
+          title: titleFromFilename(file.name),
+          category: defaultCategory,
+          gallery_orientation: await detectGalleryOrientation(file),
+          status: "pending" as const,
+          progress: 0,
+        })),
+      );
+      setItems((prev) => [...prev, ...next]);
+    })();
   }
 
   function removeItem(id: string) {
@@ -143,7 +154,10 @@ export function PhotoUploadModal({
     });
   }
 
-  function updateItem(id: string, patch: Partial<Pick<UploadItem, "title" | "category">>) {
+  function updateItem(
+    id: string,
+    patch: Partial<Pick<UploadItem, "title" | "category" | "gallery_orientation">>,
+  ) {
     setItems((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   }
 
@@ -177,6 +191,7 @@ export function PhotoUploadModal({
           filename: file.name,
           title: item.title.trim() || titleFromFilename(item.file.name),
           category: item.category,
+          gallery_orientation: item.gallery_orientation,
         });
       } finally {
         stopProgress();
@@ -344,6 +359,14 @@ export function PhotoUploadModal({
                       disabled={item.status === "uploading" || item.status === "done"}
                       onValueChange={(v) => updateItem(item.id, { category: v as PhotoCategory })}
                       options={categoryOptions}
+                    />
+                    <AppSelect
+                      value={item.gallery_orientation}
+                      disabled={item.status === "uploading" || item.status === "done"}
+                      onValueChange={(v) =>
+                        updateItem(item.id, { gallery_orientation: v as GalleryOrientation })
+                      }
+                      options={GALLERY_ORIENTATION_OPTIONS}
                     />
                     {item.status === "uploading" && (
                       <div className="space-y-1.5">

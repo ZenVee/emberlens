@@ -57,6 +57,9 @@ export function useUpdatePhotoMutation() {
               ? { public_watermarked: data.public_watermarked }
               : {}),
             ...(data.folder_id !== undefined ? { folder_id: data.folder_id } : {}),
+            ...(data.gallery_orientation !== undefined
+              ? { gallery_orientation: data.gallery_orientation }
+              : {}),
           };
         }),
       );

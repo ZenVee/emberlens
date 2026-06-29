@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
-import { PhotoCard } from "@/components/photo-card";
+import { EditorialMasonryGallery } from "@/components/editorial-masonry-gallery";
 import { Lightbox } from "@/components/lightbox";
 import { fetchPublishedPhotos } from "@/lib/media";
 import { useSiteSettings } from "@/lib/site-settings-queries";
@@ -69,25 +69,23 @@ function GalleryPage() {
         )}
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 pb-20 sm:px-6">
+      <section className="mx-auto max-w-[90rem] px-2 pb-24 sm:px-3">
         {filtered.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-border/60 px-6 py-16 text-center text-muted-foreground">
+          <p className="rounded-sm border border-dashed border-border/60 px-6 py-16 text-center text-muted-foreground">
             No published photos yet. Check back soon.
           </p>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
-            {filtered.map((p, i) => (
-              <PhotoCard
-                key={p.id}
-                src={p.src}
-                title={p.title}
-                subtitle={p.category}
-                aspect={i % 4 === 1 ? "portrait" : i % 4 === 2 ? "landscape" : "square"}
-                watermarked={p.watermarked}
-                onClick={() => setOpenIndex(i)}
-              />
-            ))}
-          </div>
+          <EditorialMasonryGallery
+            items={filtered.map((p) => ({
+              id: p.id,
+              src: p.src,
+              title: p.title,
+              subtitle: p.category,
+              watermarked: p.watermarked,
+              orientation: p.gallery_orientation,
+            }))}
+            onItemClick={setOpenIndex}
+          />
         )}
       </section>
 
