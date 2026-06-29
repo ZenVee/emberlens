@@ -5,9 +5,8 @@ export {
   updatePhotoFolder,
   deletePhotoFolder,
 } from "./photo-folders";
+export { fetchAdminPhotos, fetchAdminProjectPhotoGroups } from "./photos-admin-queries";
 export {
-  fetchAdminPhotos,
-  fetchAdminProjectPhotoGroups,
   uploadPhoto,
   updatePhoto,
   deletePhoto,

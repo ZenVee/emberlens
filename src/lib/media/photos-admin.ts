@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 
 import { requireAdmin } from "../admin";
 import { deleteFromFivemanage, uploadToFivemanage } from "../fivemanage";
-import type { AdminProjectPhotoGroup, DbPhoto } from "../media-types";
+import type { DbPhoto } from "../media-types";
 import { zodValidator } from "../schemas/parse";
 import {
   bulkDeletePhotosSchema,
@@ -12,7 +12,6 @@ import {
   updatePhotoSchema,
 } from "../schemas/media";
 import { getSupabaseServerClient } from "../supabase";
-import { uploadWatermarkedToFivemanage } from "../watermark-image";
 import { deletePhotosWithAssets, linkPhotoToProject } from "./photo-assets";
 import {
   extensionForMime,
@@ -21,43 +20,6 @@ import {
   resolveFolderId,
   validatePhotoCategory,
 } from "./shared";
-
-export const fetchAdminPhotos = createServerFn({ method: "GET" }).handler(
-  async (): Promise<DbPhoto[]> => {
-    await requireAdmin();
-    const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase
-      .from("photos")
-      .select(PHOTO_SELECT)
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-    return data as DbPhoto[];
-  },
-);
-
-export const fetchAdminProjectPhotoGroups = createServerFn({ method: "GET" }).handler(
-  async (): Promise<AdminProjectPhotoGroup[]> => {
-    await requireAdmin();
-    const supabase = getSupabaseServerClient();
-    const { data, error } = await supabase
-      .from("projects")
-      .select("id, title, project_photos(photo_id)")
-      .order("created_at", { ascending: false });
-
-    if (error) throw error;
-
-    return (data ?? [])
-      .map((row) => ({
-        projectId: row.id as string,
-        title: row.title as string,
-        photoIds: ((row.project_photos as { photo_id: string }[]) ?? []).map(
-          (link) => link.photo_id,
-        ),
-      }))
-      .filter((group) => group.photoIds.length > 0);
-  },
-);
 
 export const uploadPhoto = createServerFn({ method: "POST" })
   .validator(zodValidator(uploadPhotoSchema))
@@ -97,6 +59,7 @@ export const uploadPhoto = createServerFn({ method: "POST" })
 
     let watermarkedCdnUrl: string | null = null;
     try {
+      const { uploadWatermarkedToFivemanage } = await import("../watermark-image");
       watermarkedCdnUrl = await uploadWatermarkedToFivemanage(buffer, data.mimeType, {
         filename: `${baseName}-wm`,
         title,
