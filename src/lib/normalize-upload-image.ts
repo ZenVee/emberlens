@@ -5,7 +5,7 @@ function isSafeByExtension(filename: string): boolean {
   return ext === "jpg" || ext === "jpeg" || ext === "png";
 }
 
-/** Converts WebP, HEIC, GIF, etc. to JPEG so server-side watermarking can decode the file. */
+/** Converts WebP, HEIC, GIF, etc. to JPEG for upload compatibility. */
 export async function normalizeUploadImage(file: File): Promise<File> {
   const type = file.type || "";
   if (WATERMARK_SAFE_TYPES.has(type)) return file;

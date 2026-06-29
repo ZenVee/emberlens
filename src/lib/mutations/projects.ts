@@ -55,7 +55,6 @@ export function useUpdateProjectMutation() {
       id: string;
       published?: boolean;
       client_paid?: boolean;
-      public_watermarked?: boolean;
       title?: string;
       client?: string;
       description?: string;
@@ -114,7 +113,6 @@ export function usePersistProjectMutation() {
           cover_photo_id: state.coverId || null,
           published: state.project.published,
           client_paid: Boolean(state.project.client_paid_at),
-          public_watermarked: state.project.public_watermarked,
         },
       });
       assertNoServerError(updateResult);

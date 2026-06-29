@@ -105,7 +105,6 @@ export function syncProjectCaches(
             shoot_date: state.project.shoot_date,
             published: state.project.published,
             client_paid_at: state.project.client_paid_at,
-            public_watermarked: state.project.public_watermarked,
             coverUrl:
               nextPhotos.find((photo) => photo.id === state.coverId)?.cdn_url ?? item.coverUrl,
             photoCount: nextPhotos.length,

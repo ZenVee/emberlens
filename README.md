@@ -6,7 +6,7 @@ Photography studio site and admin CMS built with TanStack Start, React, and Supa
 
 - **Frontend:** React 19, TanStack Router, TanStack Query, Tailwind CSS, shadcn/ui
 - **Backend:** TanStack Start server functions, Supabase (Postgres + Auth)
-- **Media:** Fivemanage CDN, server-side watermarking
+- **Media:** Fivemanage CDN
 - **Deploy:** Vite + Nitro (Cloudflare Workers via Lovable)
 
 ## Prerequisites

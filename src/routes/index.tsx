@@ -7,7 +7,6 @@ import { PhotoCard } from "@/components/photo-card";
 import { MediaImage } from "@/components/media-image";
 import { PLACEHOLDER_IMAGE } from "@/lib/placeholder-image";
 import { fetchFeaturedPhotos, fetchPublishedProjects } from "@/lib/media";
-import { publicGalleryWatermarked } from "@/lib/media-types";
 import { useSiteSettings } from "@/lib/site-settings-queries";
 import { DEFAULT_SITE_SETTINGS } from "@/lib/site-settings-types";
 
@@ -123,7 +122,6 @@ function Index() {
                 title={p.title}
                 subtitle={p.category}
                 aspect={i % 5 === 0 ? "portrait" : "square"}
-                watermarked={p.watermarked}
               />
             ))
           )}
@@ -261,13 +259,6 @@ function Index() {
                   <MediaImage
                     src={pr.cover || PLACEHOLDER_IMAGE}
                     alt={pr.title}
-                    watermarked={
-                      Boolean(pr.cover) &&
-                      publicGalleryWatermarked({
-                        client_paid_at: pr.clientPaid ? "paid" : null,
-                        public_watermarked: pr.publicWatermarked,
-                      })
-                    }
                     loading="lazy"
                     width={800}
                     height={600}

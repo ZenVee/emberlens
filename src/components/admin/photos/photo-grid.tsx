@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Lock, Pencil, Star, Trash2 } from "lucide-react";
+import { Eye, EyeOff, Pencil, Star, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,11 +21,6 @@ export function PhotoStatusBadges({ photo }: { photo: DbPhoto }) {
       {photo.featured && (
         <span className="rounded-full bg-ember/15 px-2 py-0.5 text-xs text-ember">Featured</span>
       )}
-      {photo.public_watermarked && (
-        <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-400">
-          Watermarked
-        </span>
-      )}
     </div>
   );
 }
@@ -35,19 +30,15 @@ export function PhotoRowActions({
   onDelete,
   onTogglePublished,
   onToggleFeatured,
-  onTogglePublicWatermarked,
   published,
   featured,
-  publicWatermarked,
 }: {
   onEdit: () => void;
   onDelete: () => void;
   onTogglePublished: () => void;
   onToggleFeatured: () => void;
-  onTogglePublicWatermarked: () => void;
   published: boolean;
   featured: boolean;
-  publicWatermarked: boolean;
 }) {
   return (
     <div className="flex justify-end gap-0.5">
@@ -56,12 +47,6 @@ export function PhotoRowActions({
       </IconButton>
       <IconButton onClick={onToggleFeatured} title={featured ? "Unfeature" : "Feature"}>
         <Star className={cn("h-3.5 w-3.5", featured && "fill-current text-ember")} />
-      </IconButton>
-      <IconButton
-        onClick={onTogglePublicWatermarked}
-        title={publicWatermarked ? "Remove public watermark" : "Watermark on public gallery"}
-      >
-        <Lock className={cn("h-3.5 w-3.5", publicWatermarked && "text-amber-400")} />
       </IconButton>
       <IconButton onClick={onEdit} title="Edit">
         <Pencil className="h-3.5 w-3.5" />
@@ -107,7 +92,6 @@ export function PhotoGridCard({
   onDelete,
   onTogglePublished,
   onToggleFeatured,
-  onTogglePublicWatermarked,
 }: {
   photo: DbPhoto;
   selected: boolean;
@@ -116,7 +100,6 @@ export function PhotoGridCard({
   onDelete: () => void;
   onTogglePublished: () => void;
   onToggleFeatured: () => void;
-  onTogglePublicWatermarked: () => void;
 }) {
   return (
     <article
@@ -165,14 +148,6 @@ export function PhotoGridCard({
             title={photo.featured ? "Unfeature" : "Feature"}
           >
             <Star className={cn("h-3.5 w-3.5", photo.featured && "fill-current")} />
-          </OverlayAction>
-          <OverlayAction
-            onClick={onTogglePublicWatermarked}
-            title={
-              photo.public_watermarked ? "Remove public watermark" : "Watermark on public gallery"
-            }
-          >
-            <Lock className={cn("h-3.5 w-3.5", photo.public_watermarked && "text-amber-300")} />
           </OverlayAction>
           <OverlayAction onClick={onEdit} title="Edit">
             <Pencil className="h-3.5 w-3.5" />

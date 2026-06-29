@@ -28,13 +28,11 @@ export type DbPhoto = {
   category: PhotoCategory;
   fivemanage_id: string;
   cdn_url: string;
-  watermarked_cdn_url: string | null;
   original_url: string | null;
   alt_text: string | null;
   sort_order: number;
   featured: boolean;
   published: boolean;
-  public_watermarked: boolean;
   gallery_orientation: GalleryOrientation;
   folder_id: string | null;
   created_at: string;
@@ -47,7 +45,6 @@ export type PublicPhoto = {
   category: PhotoCategory;
   src: string;
   alt_text: string | null;
-  watermarked?: boolean;
   gallery_orientation: GalleryOrientation;
 };
 
@@ -63,7 +60,6 @@ export type DbProject = {
   cover_photo_id: string | null;
   published: boolean;
   client_paid_at: string | null;
-  public_watermarked: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -79,58 +75,20 @@ export type PublicProjectListItem = {
   description: string | null;
   cover: string;
   clientPaid: boolean;
-  publicWatermarked: boolean;
 };
 
 export type PublicProjectDetail = PublicProjectListItem & {
-  clientPaid: boolean;
-  publicWatermarked: boolean;
   published: boolean;
   images: PublicPhoto[];
 };
 
-export function clientGalleryWatermarked(project: Pick<DbProject, "client_paid_at">): boolean {
-  return !project.client_paid_at;
-}
-
-export function publicGalleryWatermarked(
-  project: Pick<DbProject, "client_paid_at" | "public_watermarked">,
-): boolean {
-  if (!project.client_paid_at) return true;
-  return project.public_watermarked;
-}
-
-export function projectPageWatermarked(
-  project: Pick<DbProject, "client_paid_at" | "published" | "public_watermarked">,
-): boolean {
-  if (!project.published) return clientGalleryWatermarked(project);
-  return publicGalleryWatermarked(project);
-}
-
-export function publicPhotoSrc(
-  photo: Pick<DbPhoto, "cdn_url" | "watermarked_cdn_url">,
-  watermarked: boolean,
-): string {
-  if (watermarked && photo.watermarked_cdn_url) return photo.watermarked_cdn_url;
-  return photo.cdn_url;
-}
-
-export function photoUrlForProject(
-  photo: Pick<DbPhoto, "cdn_url" | "watermarked_cdn_url">,
-  project: Pick<DbProject, "client_paid_at" | "published" | "public_watermarked">,
-): string {
-  return publicPhotoSrc(photo, projectPageWatermarked(project));
-}
-
 export function toPublicPhoto(photo: DbPhoto): PublicPhoto {
-  const watermarked = photo.public_watermarked;
   return {
     id: photo.id,
     title: photo.title,
     category: photo.category,
-    src: publicPhotoSrc(photo, watermarked),
+    src: photo.cdn_url,
     alt_text: photo.alt_text,
-    watermarked,
     gallery_orientation: photo.gallery_orientation ?? "portrait",
   };
 }

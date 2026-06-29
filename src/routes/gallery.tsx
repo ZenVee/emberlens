@@ -39,7 +39,6 @@ function GalleryPage() {
   const lightboxItems = filtered.map((p) => ({
     src: p.src,
     title: p.title,
-    watermarked: p.watermarked,
   }));
 
   return (
@@ -81,7 +80,6 @@ function GalleryPage() {
               src: p.src,
               title: p.title,
               subtitle: p.category,
-              watermarked: p.watermarked,
               orientation: p.gallery_orientation,
             }))}
             onItemClick={setOpenIndex}

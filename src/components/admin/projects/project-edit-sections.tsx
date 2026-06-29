@@ -1,4 +1,4 @@
-import { Check, Copy, Eye, EyeOff, Lock, Trash2, Upload } from "lucide-react";
+import { Check, Copy, Eye, EyeOff, Trash2, Upload } from "lucide-react";
 import type { ComponentType } from "react";
 
 import { AppSelect } from "@/components/app-select";
@@ -121,29 +121,17 @@ export function ProjectEditDetails({
         <ToggleRow
           label="Client paid"
           description={
-            project.client_paid_at
-              ? "Synced with linked bookings"
-              : "Remove watermarks from the client gallery link"
+            project.client_paid_at ? "Synced with linked bookings" : "Mark when the client has paid"
           }
           checked={Boolean(project.client_paid_at)}
           onChange={(paid) =>
             setProject({
               ...project,
               client_paid_at: paid ? new Date().toISOString() : null,
-              public_watermarked: paid ? project.public_watermarked : false,
             })
           }
           icon={Check}
         />
-        {project.client_paid_at && (
-          <ToggleRow
-            label="Watermarks on public page"
-            description="Show watermarked images when this project is published"
-            checked={project.public_watermarked}
-            onChange={(public_watermarked) => setProject({ ...project, public_watermarked })}
-            icon={Lock}
-          />
-        )}
       </div>
     </section>
   );

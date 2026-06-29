@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Lock, ShieldCheck, Star, Trash2, X } from "lucide-react";
+import { Eye, EyeOff, Star, Trash2, X } from "lucide-react";
 
 import { AppSelect } from "@/components/app-select";
 import { Button } from "@/components/ui/button";
@@ -18,8 +18,6 @@ type PhotoBulkBarProps = Pick<
   | "categoryOptions"
   | "clearSelection"
   | "setBulkDeleteOpen"
-  | "runBulkRegenerateWatermarks"
-  | "watermarkProgress"
 >;
 
 function BulkButton({
@@ -53,18 +51,12 @@ export function PhotoBulkBar({
   categoryOptions,
   clearSelection,
   setBulkDeleteOpen,
-  runBulkRegenerateWatermarks,
-  watermarkProgress,
 }: PhotoBulkBarProps) {
   if (selectedCount === 0) return null;
 
   return (
     <div className="sticky bottom-4 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-card/95 px-4 py-3 shadow-card backdrop-blur-sm">
-      <span className="mr-1 text-sm font-medium">
-        {watermarkProgress
-          ? `Generating ${watermarkProgress.done}/${watermarkProgress.total}…`
-          : `${selectedCount} selected`}
-      </span>
+      <span className="mr-1 text-sm font-medium">{selectedCount} selected</span>
       <BulkButton
         disabled={bulkWorking}
         onClick={() => void runBulkUpdate({ published: true })}
@@ -88,24 +80,6 @@ export function PhotoBulkBar({
         onClick={() => void runBulkUpdate({ featured: false })}
         icon={Star}
         label="Unfeature"
-      />
-      <BulkButton
-        disabled={bulkWorking}
-        onClick={() => void runBulkRegenerateWatermarks()}
-        icon={ShieldCheck}
-        label="Generate watermarks"
-      />
-      <BulkButton
-        disabled={bulkWorking}
-        onClick={() => void runBulkUpdate({ public_watermarked: true })}
-        icon={Lock}
-        label="Watermark"
-      />
-      <BulkButton
-        disabled={bulkWorking}
-        onClick={() => void runBulkUpdate({ public_watermarked: false })}
-        icon={Lock}
-        label="Unwatermark"
       />
       <AppSelect
         size="sm"

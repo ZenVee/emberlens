@@ -31,7 +31,6 @@ export const updatePhotoSchema = z.object({
   category: z.string().optional(),
   published: z.boolean().optional(),
   featured: z.boolean().optional(),
-  public_watermarked: z.boolean().optional(),
   folder_id: z.string().nullable().optional(),
   sort_order: z.number().optional(),
   gallery_orientation: galleryOrientationSchema.optional(),
@@ -42,15 +41,12 @@ export const bulkUpdatePhotosSchema = z.object({
   category: z.string().optional(),
   published: z.boolean().optional(),
   featured: z.boolean().optional(),
-  public_watermarked: z.boolean().optional(),
   folder_id: z.string().nullable().optional(),
 });
 
 export const bulkDeletePhotosSchema = z.object({
   ids: z.array(z.string().min(1)).min(1).max(200),
 });
-
-export const regeneratePhotoWatermarkSchema = idSchema;
 
 export const createPhotoFolderSchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -80,7 +76,6 @@ export const updateProjectSchema = z.object({
   cover_photo_id: z.string().nullable().optional(),
   published: z.boolean().optional(),
   client_paid: z.boolean().optional(),
-  public_watermarked: z.boolean().optional(),
   sort_order: z.number().optional(),
   download_link: z.string().nullable().optional(),
 });

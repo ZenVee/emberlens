@@ -150,8 +150,6 @@ export const updateProject = createServerFn({ method: "POST" })
       const syncResult = await syncProjectPaidToBookings(supabase, data.id, clientPaidAt);
       if (syncResult.error) return { error: syncResult.error };
     }
-    if (data.public_watermarked !== undefined) patch.public_watermarked = data.public_watermarked;
-
     const { error } = await supabase.from("projects").update(patch).eq("id", data.id);
     if (error) return { error: error.message };
     return { error: null };

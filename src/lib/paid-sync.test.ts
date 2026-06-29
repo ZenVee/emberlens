@@ -23,7 +23,7 @@ describe("mergePaidOnLink", () => {
 });
 
 describe("syncBookingPaidToProject", () => {
-  it("updates project paid status and clears watermark when unpaid", async () => {
+  it("updates project paid status when unpaid", async () => {
     const eq = vi.fn().mockResolvedValue({ error: null });
     const update = vi.fn().mockReturnValue({ eq });
     const from = vi.fn().mockReturnValue({ update });
@@ -37,7 +37,6 @@ describe("syncBookingPaidToProject", () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({
         client_paid_at: null,
-        public_watermarked: false,
       }),
     );
     expect(eq).toHaveBeenCalledWith("id", "project-1");
@@ -54,7 +53,7 @@ describe("syncBookingPaidToProject", () => {
     expect(result).toEqual({ error: "DB error" });
   });
 
-  it("does not clear watermark when client is paid", async () => {
+  it("sets paid date when client is paid", async () => {
     const eq = vi.fn().mockResolvedValue({ error: null });
     const update = vi.fn().mockReturnValue({ eq });
     const from = vi.fn().mockReturnValue({ update });
@@ -70,7 +69,6 @@ describe("syncBookingPaidToProject", () => {
         client_paid_at: paidAt,
       }),
     );
-    expect(update).not.toHaveBeenCalledWith(expect.objectContaining({ public_watermarked: false }));
   });
 });
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ImageIcon, Loader2, ShieldCheck } from "lucide-react";
+import { ImageIcon } from "lucide-react";
 
 import { AppSelect } from "@/components/app-select";
 import { SaveStatus } from "@/components/save-status";
@@ -14,14 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { categorySelectOptions } from "@/lib/categories";
 import { GALLERY_ORIENTATION_OPTIONS } from "@/lib/gallery-orientation";
 import type { DbPhoto } from "@/lib/media-types";
 import { cn } from "@/lib/utils";
-
-type PreviewMode = "original" | "watermarked";
 
 type PhotoEditDialogProps = {
   photo: DbPhoto | null;
@@ -29,8 +26,6 @@ type PhotoEditDialogProps = {
   folders: readonly { id: string; name: string }[];
   onClose: () => void;
   onSave: (photo: DbPhoto) => void | Promise<void>;
-  onRegenerateWatermark?: (photo: DbPhoto) => void | Promise<void>;
-  regenerating?: boolean;
 };
 
 export function PhotoEditDialog({
@@ -39,15 +34,11 @@ export function PhotoEditDialog({
   folders,
   onClose,
   onSave,
-  onRegenerateWatermark,
-  regenerating = false,
 }: PhotoEditDialogProps) {
   const [draft, setDraft] = useState<DbPhoto | null>(photo);
-  const [previewMode, setPreviewMode] = useState<PreviewMode>("original");
 
   useEffect(() => {
     setDraft(photo);
-    setPreviewMode("original");
   }, [photo]);
 
   const categoryOptions = useMemo(
@@ -62,15 +53,6 @@ export function PhotoEditDialog({
     ],
     [folders],
   );
-
-  const hasWatermark = Boolean(
-    draft?.watermarked_cdn_url && draft.watermarked_cdn_url !== draft.cdn_url,
-  );
-
-  const previewSrc =
-    previewMode === "watermarked" && hasWatermark
-      ? draft!.watermarked_cdn_url!
-      : (draft?.cdn_url ?? "");
 
   const { status: saveStatus, error: saveError } = useAutoSave(
     draft,
@@ -99,68 +81,21 @@ export function PhotoEditDialog({
       <DialogContent className="gap-0 overflow-hidden rounded-2xl border-border bg-card p-0 sm:max-w-2xl">
         <DialogHeader className="border-b border-border/60 px-6 py-5 text-left">
           <DialogTitle className="font-display text-xl">Edit photo</DialogTitle>
-          <DialogDescription>
-            Update metadata and preview the watermarked version.
-          </DialogDescription>
+          <DialogDescription>Update metadata and gallery layout.</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-6 p-6 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <Label>Preview</Label>
-              <div className="flex rounded-full border border-border/60 bg-background/60 p-0.5">
-                <PreviewToggle
-                  active={previewMode === "original"}
-                  onClick={() => setPreviewMode("original")}
-                  label="Original"
-                />
-                <PreviewToggle
-                  active={previewMode === "watermarked"}
-                  onClick={() => hasWatermark && setPreviewMode("watermarked")}
-                  label="Watermarked"
-                  disabled={!hasWatermark}
-                />
-              </div>
-            </div>
-
+            <Label>Preview</Label>
             <div className="relative aspect-square overflow-hidden rounded-xl border border-border/60 bg-secondary">
-              {previewSrc ? (
-                <img src={previewSrc} alt={draft.title} className="h-full w-full object-cover" />
+              {draft.cdn_url ? (
+                <img src={draft.cdn_url} alt={draft.title} className="h-full w-full object-cover" />
               ) : (
                 <div className="grid h-full place-items-center text-muted-foreground">
                   <ImageIcon className="h-10 w-10 opacity-40" />
                 </div>
               )}
-              {previewMode === "watermarked" && (
-                <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-xs text-white backdrop-blur-sm">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  Watermarked
-                </span>
-              )}
             </div>
-
-            {!hasWatermark && (
-              <p className="text-xs text-muted-foreground">
-                No watermarked file yet. Generate one from the original below.
-              </p>
-            )}
-            {onRegenerateWatermark && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full"
-                disabled={regenerating}
-                onClick={() => void onRegenerateWatermark(draft)}
-              >
-                {regenerating ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                )}
-                {hasWatermark ? "Regenerate watermark" : "Generate watermark"}
-              </Button>
-            )}
           </div>
 
           <div className="space-y-5">
@@ -170,7 +105,6 @@ export function PhotoEditDialog({
                 tone={draft.published ? "success" : "muted"}
               />
               {draft.featured && <StatusPill label="Featured" tone="accent" />}
-              {draft.public_watermarked && <StatusPill label="Public watermark" tone="accent" />}
             </div>
 
             <div className="space-y-2">
@@ -218,26 +152,6 @@ export function PhotoEditDialog({
                 Portrait tiles are tall; wide images span two columns in the masonry grid.
               </p>
             </div>
-
-            <div className="flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background/40 px-4 py-3">
-              <div className="space-y-0.5">
-                <Label htmlFor="photo-edit-watermark">Public gallery watermark</Label>
-                <p className="text-xs text-muted-foreground">
-                  Show the watermarked version on the public gallery and homepage.
-                </p>
-              </div>
-              <Switch
-                id="photo-edit-watermark"
-                checked={draft.public_watermarked}
-                disabled={!hasWatermark}
-                onCheckedChange={(checked) => setDraft({ ...draft, public_watermarked: checked })}
-              />
-            </div>
-            {!hasWatermark && (
-              <p className="text-xs text-muted-foreground">
-                Generate a watermarked version before enabling this.
-              </p>
-            )}
           </div>
         </div>
 
@@ -249,35 +163,6 @@ export function PhotoEditDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function PreviewToggle({
-  active,
-  onClick,
-  label,
-  disabled,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "rounded-full px-3 py-1 text-xs font-medium transition-colors",
-        active
-          ? "bg-gradient-ember text-primary-foreground shadow-glow"
-          : "text-muted-foreground hover:text-foreground",
-        disabled && "cursor-not-allowed opacity-40",
-      )}
-    >
-      {label}
-    </button>
   );
 }
 

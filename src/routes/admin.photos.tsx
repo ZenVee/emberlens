@@ -86,7 +86,6 @@ function AdminPhotos() {
           setDeleteTarget={page.setDeleteTarget}
           togglePublished={page.togglePublished}
           toggleFeatured={page.toggleFeatured}
-          togglePublicWatermarked={page.togglePublicWatermarked}
         />
 
         <PhotoBulkBar
@@ -101,8 +100,6 @@ function AdminPhotos() {
           categoryOptions={page.categoryOptions}
           clearSelection={page.clearSelection}
           setBulkDeleteOpen={page.setBulkDeleteOpen}
-          runBulkRegenerateWatermarks={page.runBulkRegenerateWatermarks}
-          watermarkProgress={page.watermarkProgress}
         />
 
         <PhotoUploadModal
@@ -149,8 +146,6 @@ function AdminPhotos() {
           folders={page.folders}
           onClose={() => page.setEditing(null)}
           onSave={(updated) => page.saveEdit(updated)}
-          onRegenerateWatermark={(photo) => page.regenerateEditWatermark(photo)}
-          regenerating={page.regenerateWorking}
         />
       </div>
     </div>

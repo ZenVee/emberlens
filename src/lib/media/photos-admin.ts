@@ -8,7 +8,6 @@ import {
   bulkDeletePhotosSchema,
   bulkUpdatePhotosSchema,
   idSchema,
-  regeneratePhotoWatermarkSchema,
   uploadPhotoSchema,
   updatePhotoSchema,
 } from "../schemas/media";
@@ -60,17 +59,6 @@ export const uploadPhoto = createServerFn({ method: "POST" })
         metadata: { title },
       });
 
-      let watermarkedCdnUrl: string | null = null;
-      try {
-        const { uploadWatermarkedToFivemanage } = await import("../watermark-image");
-        watermarkedCdnUrl = await uploadWatermarkedToFivemanage(buffer, data.mimeType, {
-          filename: `${baseName}-wm`,
-          title,
-        });
-      } catch (watermarkError) {
-        console.error("Watermark generation failed:", watermarkError);
-      }
-
       const { data: photo, error } = await supabase
         .from("photos")
         .insert({
@@ -79,7 +67,6 @@ export const uploadPhoto = createServerFn({ method: "POST" })
           fivemanage_id: cleanUpload.id,
           cdn_url: cleanUpload.url,
           original_url: cleanUpload.originalUrl ?? null,
-          watermarked_cdn_url: watermarkedCdnUrl,
           uploaded_by: user.id,
           folder_id: resolvedFolderId,
           gallery_orientation: data.gallery_orientation ?? "portrait",
@@ -128,7 +115,6 @@ export const updatePhoto = createServerFn({ method: "POST" })
     }
     if (data.published !== undefined) patch.published = data.published;
     if (data.featured !== undefined) patch.featured = data.featured;
-    if (data.public_watermarked !== undefined) patch.public_watermarked = data.public_watermarked;
     if (data.folder_id !== undefined) {
       const folderResult = await resolveFolderId(supabase, data.folder_id);
       if (folderResult !== null && typeof folderResult === "object") {
@@ -192,7 +178,6 @@ export const bulkUpdatePhotos = createServerFn({ method: "POST" })
     }
     if (data.published !== undefined) patch.published = data.published;
     if (data.featured !== undefined) patch.featured = data.featured;
-    if (data.public_watermarked !== undefined) patch.public_watermarked = data.public_watermarked;
     if (data.folder_id !== undefined) {
       const folderResult = await resolveFolderId(supabase, data.folder_id);
       if (folderResult !== null && typeof folderResult === "object") {
@@ -226,69 +211,4 @@ export const bulkDeletePhotos = createServerFn({ method: "POST" })
     if (result.error) return { error: result.error, deleted: 0 };
 
     return { error: null, deleted: data.ids.length };
-  });
-
-export const regeneratePhotoWatermark = createServerFn({ method: "POST" })
-  .validator(zodValidator(regeneratePhotoWatermarkSchema))
-  .handler(async ({ data }) => {
-    await requireAdmin();
-    const supabase = getSupabaseServerClient();
-
-    const { data: photo, error: fetchError } = await supabase
-      .from("photos")
-      .select("id, title, cdn_url, original_url")
-      .eq("id", data.id)
-      .maybeSingle();
-
-    if (fetchError) {
-      return { error: fetchError.message, photo: null };
-    }
-    if (!photo) {
-      return { error: "Photo not found.", photo: null };
-    }
-
-    const sourceUrl = photo.original_url ?? photo.cdn_url;
-    if (!sourceUrl) {
-      return { error: "Photo has no source image.", photo: null };
-    }
-
-    try {
-      const { downloadImage, uploadWatermarkedToFivemanage } = await import("../watermark-image");
-      const { buffer, mimeType } = await downloadImage(sourceUrl);
-      if (buffer.byteLength > MAX_UPLOAD_BYTES) {
-        return { error: "Source image exceeds 15 MB limit.", photo: null };
-      }
-
-      const baseName =
-        photo.title
-          .trim()
-          .replace(/[^\w.-]+/g, "-")
-          .replace(/^-+|-+$/g, "") || "photo";
-      const watermarkedCdnUrl = await uploadWatermarkedToFivemanage(buffer, mimeType, {
-        filename: `${baseName}-wm`,
-        photoId: photo.id,
-        title: photo.title,
-      });
-
-      const { data: updated, error: updateError } = await supabase
-        .from("photos")
-        .update({
-          watermarked_cdn_url: watermarkedCdnUrl,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", photo.id)
-        .select(PHOTO_SELECT)
-        .single();
-
-      if (updateError) {
-        return { error: updateError.message, photo: null };
-      }
-
-      return { error: null, photo: updated as DbPhoto };
-    } catch (err) {
-      return {
-        error: err instanceof Error ? err.message : "Watermark generation failed.",
-        photo: null,
-      };
-    }
   });

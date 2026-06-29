@@ -3,12 +3,12 @@ import { loadSiteSettings } from "../site-settings-data";
 import type { getSupabaseServerClient } from "../supabase";
 
 export const PHOTO_SELECT =
-  "id, title, category, fivemanage_id, cdn_url, watermarked_cdn_url, original_url, alt_text, sort_order, featured, published, public_watermarked, gallery_orientation, folder_id, created_at, updated_at";
+  "id, title, category, fivemanage_id, cdn_url, original_url, alt_text, sort_order, featured, published, gallery_orientation, folder_id, created_at, updated_at";
 
 export const FOLDER_SELECT = "id, name, sort_order, created_at, updated_at";
 
 export const PROJECT_SELECT =
-  "id, slug, title, client, shoot_date, category, description, download_link, cover_photo_id, published, client_paid_at, public_watermarked, sort_order, created_at, updated_at";
+  "id, slug, title, client, shoot_date, category, description, download_link, cover_photo_id, published, client_paid_at, sort_order, created_at, updated_at";
 
 export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 

@@ -17,7 +17,7 @@ export function PaidToggle({
       <div>
         <p className="text-sm font-medium">Client paid</p>
         <p className="text-xs text-muted-foreground">
-          Remove watermarks from the client gallery link
+          Mark when the client has paid for this booking
         </p>
       </div>
       <button

@@ -22,7 +22,6 @@ import {
   useCreatePhotoFolderMutation,
   useDeletePhotoFolderMutation,
   useDeletePhotoMutation,
-  useRegeneratePhotoWatermarkMutation,
   useUpdatePhotoFolderMutation,
   useUpdatePhotoMutation,
   useUploadPhotoMutation,
@@ -79,11 +78,6 @@ export function useAdminPhotosPage() {
   const deleteMutation = useDeletePhotoMutation();
   const bulkUpdateMutation = useBulkUpdatePhotosMutation();
   const bulkDeleteMutation = useBulkDeletePhotosMutation();
-  const regenerateMutation = useRegeneratePhotoWatermarkMutation();
-  const [watermarkProgress, setWatermarkProgress] = useState<{
-    done: number;
-    total: number;
-  } | null>(null);
   const createFolderMutation = useCreatePhotoFolderMutation();
   const updateFolderMutation = useUpdatePhotoFolderMutation();
   const deleteFolderMutation = useDeletePhotoFolderMutation();
@@ -269,18 +263,6 @@ export function useAdminPhotosPage() {
     }
   }
 
-  async function togglePublicWatermarked(photo: DbPhoto) {
-    setError(null);
-    try {
-      await updateMutation.mutateAsync({
-        id: photo.id,
-        public_watermarked: !photo.public_watermarked,
-      });
-    } catch (err) {
-      setError(mutationErrorMessage(err, "Could not update photo."));
-    }
-  }
-
   async function confirmDelete() {
     if (!deleteTarget) return;
     setError(null);
@@ -314,7 +296,6 @@ export function useAdminPhotosPage() {
     category?: PhotoCategory;
     published?: boolean;
     featured?: boolean;
-    public_watermarked?: boolean;
     folder_id?: string | null;
   }) {
     const ids = [...selected];
@@ -327,54 +308,11 @@ export function useAdminPhotosPage() {
     }
   }
 
-  async function runBulkRegenerateWatermarks() {
-    const ids = [...selected];
-    if (ids.length === 0) return;
-    setError(null);
-    setWatermarkProgress({ done: 0, total: ids.length });
-
-    let succeeded = 0;
-    let failed = 0;
-
-    try {
-      for (const id of ids) {
-        try {
-          await regenerateMutation.mutateAsync(id);
-          succeeded += 1;
-        } catch {
-          failed += 1;
-        }
-        setWatermarkProgress({ done: succeeded + failed, total: ids.length });
-      }
-
-      if (failed > 0) {
-        setError(
-          `Generated ${succeeded} watermark${succeeded === 1 ? "" : "s"}. ${failed} failed.`,
-        );
-      }
-    } finally {
-      setWatermarkProgress(null);
-    }
-  }
-
-  async function regenerateEditWatermark(photo: DbPhoto) {
-    setError(null);
-    try {
-      const updated = await regenerateMutation.mutateAsync(photo.id);
-      setEditing(updated);
-      return updated;
-    } catch (err) {
-      setError(mutationErrorMessage(err, "Could not generate watermark."));
-      throw err;
-    }
-  }
-
   async function saveEdit(updated: DbPhoto) {
     await updateMutation.mutateAsync({
       id: updated.id,
       title: updated.title,
       category: updated.category,
-      public_watermarked: updated.public_watermarked,
       folder_id: updated.folder_id,
       gallery_orientation: updated.gallery_orientation,
     });
@@ -412,8 +350,7 @@ export function useAdminPhotosPage() {
     setBulkCategory,
     bulkFolder,
     setBulkFolder,
-    bulkWorking: bulkUpdateMutation.isPending || regenerateMutation.isPending,
-    watermarkProgress,
+    bulkWorking: bulkUpdateMutation.isPending,
     uploadOpen,
     setUploadOpen,
     error,
@@ -442,13 +379,9 @@ export function useAdminPhotosPage() {
     handleDeleteFolder,
     togglePublished,
     toggleFeatured,
-    togglePublicWatermarked,
     confirmDelete,
     confirmBulkDelete,
     runBulkUpdate,
-    runBulkRegenerateWatermarks,
-    regenerateEditWatermark,
-    regenerateWorking: regenerateMutation.isPending,
     saveEdit,
     handleUploaded,
     uploadFn: (payload: Parameters<typeof uploadMutation.mutateAsync>[0]) =>

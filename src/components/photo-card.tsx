@@ -6,17 +6,9 @@ type Props = {
   subtitle?: string;
   onClick?: () => void;
   aspect?: "square" | "portrait" | "landscape";
-  watermarked?: boolean;
 };
 
-export function PhotoCard({
-  src,
-  title,
-  subtitle,
-  onClick,
-  aspect = "square",
-  watermarked,
-}: Props) {
+export function PhotoCard({ src, title, subtitle, onClick, aspect = "square" }: Props) {
   const aspectCls =
     aspect === "portrait"
       ? "aspect-[3/4]"
@@ -31,7 +23,6 @@ export function PhotoCard({
       <MediaImage
         src={src}
         alt={title}
-        watermarked={watermarked}
         onClick={onClick}
         loading="lazy"
         width={800}

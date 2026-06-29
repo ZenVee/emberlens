@@ -59,13 +59,11 @@ create table public.photos (
   category text not null,
   fivemanage_id text not null unique,
   cdn_url text not null,
-  watermarked_cdn_url text,
   original_url text,
   alt_text text,
   sort_order int not null default 0,
   featured boolean not null default false,
   published boolean not null default false,
-  public_watermarked boolean not null default false,
   gallery_orientation text not null default 'portrait' check (gallery_orientation in ('portrait', 'landscape')),
   folder_id uuid references public.photo_folders (id) on delete set null,
   uploaded_by uuid references auth.users (id) on delete set null,
@@ -87,7 +85,6 @@ create table public.projects (
   cover_photo_id uuid references public.photos (id) on delete set null,
   published boolean not null default false,
   client_paid_at timestamptz,
-  public_watermarked boolean not null default false,
   sort_order int not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -246,16 +243,9 @@ begin
     update public.projects
     set
       client_paid_at = new.client_paid_at,
-      public_watermarked = case
-        when new.client_paid_at is null then false
-        else public_watermarked
-      end,
       updated_at = now()
     where id = new.project_id
-      and (
-        client_paid_at is distinct from new.client_paid_at
-        or (new.client_paid_at is null and public_watermarked is true)
-      );
+      and client_paid_at is distinct from new.client_paid_at;
   end if;
 
   return new;

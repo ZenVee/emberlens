@@ -17,14 +17,13 @@ export async function syncBookingPaidToProject(
   projectId: string,
   clientPaidAt: string | null,
 ): Promise<SyncResult> {
-  const patch: Record<string, unknown> = {
-    client_paid_at: clientPaidAt,
-    updated_at: new Date().toISOString(),
-  };
-  if (clientPaidAt === null) {
-    patch.public_watermarked = false;
-  }
-  const { error } = await supabase.from("projects").update(patch).eq("id", projectId);
+  const { error } = await supabase
+    .from("projects")
+    .update({
+      client_paid_at: clientPaidAt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", projectId);
   if (error) return { error: error.message };
   return { error: null };
 }

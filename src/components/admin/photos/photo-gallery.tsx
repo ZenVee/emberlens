@@ -23,7 +23,6 @@ type PhotoGalleryProps = Pick<
   | "setDeleteTarget"
   | "togglePublished"
   | "toggleFeatured"
-  | "togglePublicWatermarked"
 >;
 
 export function PhotoGallery({
@@ -39,7 +38,6 @@ export function PhotoGallery({
   setDeleteTarget,
   togglePublished,
   toggleFeatured,
-  togglePublicWatermarked,
 }: PhotoGalleryProps) {
   if (isPending) {
     return <AdminLoading variant="grid" />;
@@ -75,7 +73,6 @@ export function PhotoGallery({
             onDelete={() => setDeleteTarget(photo)}
             onTogglePublished={() => void togglePublished(photo)}
             onToggleFeatured={() => void toggleFeatured(photo)}
-            onTogglePublicWatermarked={() => void togglePublicWatermarked(photo)}
           />
         ))}
       </div>
@@ -106,7 +103,6 @@ export function PhotoGallery({
                 onDelete={() => setDeleteTarget(photo)}
                 onTogglePublished={() => void togglePublished(photo)}
                 onToggleFeatured={() => void toggleFeatured(photo)}
-                onTogglePublicWatermarked={() => void togglePublicWatermarked(photo)}
               />
             ))}
           </tbody>
@@ -124,7 +120,6 @@ function PhotoListRow({
   onDelete,
   onTogglePublished,
   onToggleFeatured,
-  onTogglePublicWatermarked,
 }: {
   photo: DbPhoto;
   selected: boolean;
@@ -133,7 +128,6 @@ function PhotoListRow({
   onDelete: () => void;
   onTogglePublished: () => void;
   onToggleFeatured: () => void;
-  onTogglePublicWatermarked: () => void;
 }) {
   return (
     <tr className="border-t border-border/40 transition-colors hover:bg-secondary/30">
@@ -167,10 +161,8 @@ function PhotoListRow({
           onDelete={onDelete}
           onTogglePublished={onTogglePublished}
           onToggleFeatured={onToggleFeatured}
-          onTogglePublicWatermarked={onTogglePublicWatermarked}
           published={photo.published}
           featured={photo.featured}
-          publicWatermarked={photo.public_watermarked}
         />
       </td>
     </tr>

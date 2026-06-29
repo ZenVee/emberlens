@@ -3,7 +3,7 @@ import { useEffect } from "react";
 
 import { MediaImage } from "./media-image";
 
-type Item = { src: string; title: string; watermarked?: boolean };
+type Item = { src: string; title: string };
 
 export function Lightbox({
   items,
@@ -67,7 +67,6 @@ export function Lightbox({
         <MediaImage
           src={item.src}
           alt={item.title}
-          watermarked={item.watermarked}
           className="max-h-[80vh] w-auto rounded-2xl object-contain shadow-glow"
         />
         <figcaption className="mt-3 text-center font-display text-lg text-white">

@@ -1,7 +1,6 @@
 type Props = {
   src: string;
   alt: string;
-  watermarked?: boolean;
   className?: string;
   width?: number;
   height?: number;

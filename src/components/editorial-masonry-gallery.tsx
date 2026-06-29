@@ -7,7 +7,6 @@ export type EditorialMasonryItem = {
   src: string;
   title: string;
   subtitle?: string;
-  watermarked?: boolean;
   orientation?: GalleryOrientation;
 };
 
@@ -78,7 +77,6 @@ export function EditorialMasonryGallery({
             <MediaImage
               src={item.src}
               alt={item.title}
-              watermarked={item.watermarked}
               loading="lazy"
               width={900}
               height={1200}

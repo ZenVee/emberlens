@@ -18,7 +18,6 @@ import {
   createPhotoFolder,
   deletePhoto,
   deletePhotoFolder,
-  regeneratePhotoWatermark,
   updatePhoto,
   updatePhotoFolder,
   uploadPhoto,
@@ -66,9 +65,6 @@ export function useUpdatePhotoMutation() {
             ...(data.category !== undefined ? { category: data.category } : {}),
             ...(data.published !== undefined ? { published: data.published } : {}),
             ...(data.featured !== undefined ? { featured: data.featured } : {}),
-            ...(data.public_watermarked !== undefined
-              ? { public_watermarked: data.public_watermarked }
-              : {}),
             ...(data.folder_id !== undefined ? { folder_id: data.folder_id } : {}),
             ...(data.gallery_orientation !== undefined
               ? { gallery_orientation: data.gallery_orientation }
@@ -107,7 +103,6 @@ export function useBulkUpdatePhotosMutation() {
       category?: PhotoCategory;
       published?: boolean;
       featured?: boolean;
-      public_watermarked?: boolean;
       folder_id?: string | null;
     }) => {
       const result = await bulkUpdateFn({ data });
@@ -133,26 +128,6 @@ export function useBulkDeletePhotosMutation() {
     onSuccess: (ids) => {
       removePhotosFromCache(queryClient, ids);
       invalidateAdminProjectPhotoGroups(queryClient);
-    },
-  });
-}
-
-export function useRegeneratePhotoWatermarkMutation() {
-  const queryClient = useQueryClient();
-  const regenerateFn = useServerFn(regeneratePhotoWatermark);
-
-  return useMutation({
-    mutationFn: async (id: string) => {
-      const result = await regenerateFn({ data: { id } });
-      if (result.error || !result.photo) {
-        throw new ServerMutationError(result.error ?? "Watermark generation failed.");
-      }
-      return result.photo;
-    },
-    onSuccess: (photo) => {
-      updatePhotosInCache(queryClient, (prev) =>
-        prev.map((cached) => (cached.id === photo.id ? photo : cached)),
-      );
     },
   });
 }

@@ -152,11 +152,6 @@ function AdminProjectsList() {
                   >
                     {pr.published ? "Published" : "Draft"}
                   </span>
-                  {(!pr.client_paid_at || (pr.public_watermarked && pr.published)) && (
-                    <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs text-amber-400">
-                      Watermarked
-                    </span>
-                  )}
                 </div>
                 <div className="mt-4 flex items-center gap-2">
                   <Link
