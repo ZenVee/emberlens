@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Lock, Star, Trash2, X } from "lucide-react";
+import { Eye, EyeOff, Lock, ShieldCheck, Star, Trash2, X } from "lucide-react";
 
 import { AppSelect } from "@/components/app-select";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ type PhotoBulkBarProps = Pick<
   | "categoryOptions"
   | "clearSelection"
   | "setBulkDeleteOpen"
+  | "runBulkRegenerateWatermarks"
 >;
 
 function BulkButton({
@@ -51,6 +52,7 @@ export function PhotoBulkBar({
   categoryOptions,
   clearSelection,
   setBulkDeleteOpen,
+  runBulkRegenerateWatermarks,
 }: PhotoBulkBarProps) {
   if (selectedCount === 0) return null;
 
@@ -80,6 +82,12 @@ export function PhotoBulkBar({
         onClick={() => void runBulkUpdate({ featured: false })}
         icon={Star}
         label="Unfeature"
+      />
+      <BulkButton
+        disabled={bulkWorking}
+        onClick={() => void runBulkRegenerateWatermarks()}
+        icon={ShieldCheck}
+        label="Generate watermarks"
       />
       <BulkButton
         disabled={bulkWorking}

@@ -154,3 +154,37 @@ export async function uploadWatermarkedToFivemanage(
   });
   return uploaded.url;
 }
+
+function mimeTypeFromUrl(url: string): string | undefined {
+  try {
+    const path = new URL(url).pathname.toLowerCase();
+    if (path.endsWith(".png")) return "image/png";
+    if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
+  } catch {
+    const path = url.split("?")[0]?.toLowerCase() ?? "";
+    if (path.endsWith(".png")) return "image/png";
+    if (path.endsWith(".jpg") || path.endsWith(".jpeg")) return "image/jpeg";
+  }
+  return undefined;
+}
+
+function inferImageMimeType(buffer: Buffer, hint?: string): string {
+  if (hint === "image/png" || isPngBuffer(buffer)) return "image/png";
+  return "image/jpeg";
+}
+
+export async function downloadImage(url: string): Promise<{ buffer: Buffer; mimeType: string }> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Could not download image (${response.status}).`);
+  }
+
+  const buffer = Buffer.from(await response.arrayBuffer());
+  const headerMime = response.headers.get("content-type")?.split(";")[0].trim();
+  const mimeType =
+    headerMime && headerMime.startsWith("image/")
+      ? headerMime
+      : inferImageMimeType(buffer, mimeTypeFromUrl(url));
+
+  return { buffer, mimeType };
+}

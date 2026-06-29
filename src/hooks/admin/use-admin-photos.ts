@@ -22,11 +22,12 @@ import {
   useCreatePhotoFolderMutation,
   useDeletePhotoFolderMutation,
   useDeletePhotoMutation,
+  useRegeneratePhotoWatermarksMutation,
   useUpdatePhotoFolderMutation,
   useUpdatePhotoMutation,
   useUploadPhotoMutation,
 } from "@/lib/mutations/photos";
-import { mutationErrorMessage } from "@/lib/mutations/shared";
+import { mutationErrorMessage, ServerMutationError } from "@/lib/mutations/shared";
 import { useSiteSettings } from "@/lib/site-settings-queries";
 
 export type PhotoStatusFilter = "all" | "published" | "draft" | "featured";
@@ -78,6 +79,7 @@ export function useAdminPhotosPage() {
   const deleteMutation = useDeletePhotoMutation();
   const bulkUpdateMutation = useBulkUpdatePhotosMutation();
   const bulkDeleteMutation = useBulkDeletePhotosMutation();
+  const regenerateMutation = useRegeneratePhotoWatermarksMutation();
   const createFolderMutation = useCreatePhotoFolderMutation();
   const updateFolderMutation = useUpdatePhotoFolderMutation();
   const deleteFolderMutation = useDeletePhotoFolderMutation();
@@ -321,6 +323,39 @@ export function useAdminPhotosPage() {
     }
   }
 
+  async function runBulkRegenerateWatermarks() {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    setError(null);
+    try {
+      const result = await regenerateMutation.mutateAsync(ids);
+      if (result.failures.length > 0) {
+        setError(
+          `Generated ${result.photos.length} watermark${result.photos.length === 1 ? "" : "s"}. ` +
+            `${result.failures.length} failed.`,
+        );
+      }
+    } catch (err) {
+      setError(mutationErrorMessage(err, "Could not generate watermarks."));
+    }
+  }
+
+  async function regenerateEditWatermark(photo: DbPhoto) {
+    setError(null);
+    try {
+      const result = await regenerateMutation.mutateAsync([photo.id]);
+      const updated = result.photos[0];
+      if (!updated) {
+        throw new ServerMutationError(result.failures[0]?.error ?? "Could not generate watermark.");
+      }
+      setEditing(updated);
+      return updated;
+    } catch (err) {
+      setError(mutationErrorMessage(err, "Could not generate watermark."));
+      throw err;
+    }
+  }
+
   async function saveEdit(updated: DbPhoto) {
     await updateMutation.mutateAsync({
       id: updated.id,
@@ -363,7 +398,7 @@ export function useAdminPhotosPage() {
     setBulkCategory,
     bulkFolder,
     setBulkFolder,
-    bulkWorking: bulkUpdateMutation.isPending,
+    bulkWorking: bulkUpdateMutation.isPending || regenerateMutation.isPending,
     uploadOpen,
     setUploadOpen,
     error,
@@ -396,6 +431,9 @@ export function useAdminPhotosPage() {
     confirmDelete,
     confirmBulkDelete,
     runBulkUpdate,
+    runBulkRegenerateWatermarks,
+    regenerateEditWatermark,
+    regenerateWorking: regenerateMutation.isPending,
     saveEdit,
     handleUploaded,
     uploadFn: (payload: Parameters<typeof uploadMutation.mutateAsync>[0]) =>

@@ -18,6 +18,7 @@ import {
   createPhotoFolder,
   deletePhoto,
   deletePhotoFolder,
+  regeneratePhotoWatermarks,
   updatePhoto,
   updatePhotoFolder,
   uploadPhoto,
@@ -116,6 +117,26 @@ export function useBulkDeletePhotosMutation() {
     onSuccess: (ids) => {
       removePhotosFromCache(queryClient, ids);
       invalidateAdminProjectPhotoGroups(queryClient);
+    },
+  });
+}
+
+export function useRegeneratePhotoWatermarksMutation() {
+  const queryClient = useQueryClient();
+  const regenerateFn = useServerFn(regeneratePhotoWatermarks);
+
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const result = await regenerateFn({ data: { ids } });
+      if (result.error && result.photos.length === 0) {
+        throw new ServerMutationError(result.error);
+      }
+      return result;
+    },
+    onSuccess: ({ photos }) => {
+      if (photos.length === 0) return;
+      const byId = new Map(photos.map((photo) => [photo.id, photo]));
+      updatePhotosInCache(queryClient, (prev) => prev.map((photo) => byId.get(photo.id) ?? photo));
     },
   });
 }

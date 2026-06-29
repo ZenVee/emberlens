@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ImageIcon, ShieldCheck } from "lucide-react";
+import { ImageIcon, Loader2, ShieldCheck } from "lucide-react";
 
 import { AppSelect } from "@/components/app-select";
 import { SaveStatus } from "@/components/save-status";
@@ -28,6 +28,8 @@ type PhotoEditDialogProps = {
   folders: readonly { id: string; name: string }[];
   onClose: () => void;
   onSave: (photo: DbPhoto) => void | Promise<void>;
+  onRegenerateWatermark?: (photo: DbPhoto) => void | Promise<void>;
+  regenerating?: boolean;
 };
 
 export function PhotoEditDialog({
@@ -36,6 +38,8 @@ export function PhotoEditDialog({
   folders,
   onClose,
   onSave,
+  onRegenerateWatermark,
+  regenerating = false,
 }: PhotoEditDialogProps) {
   const [draft, setDraft] = useState<DbPhoto | null>(photo);
   const [previewMode, setPreviewMode] = useState<PreviewMode>("original");
@@ -136,8 +140,25 @@ export function PhotoEditDialog({
 
             {!hasWatermark && (
               <p className="text-xs text-muted-foreground">
-                No watermarked file yet. Re-upload or regenerate to preview.
+                No watermarked file yet. Generate one from the original below.
               </p>
+            )}
+            {onRegenerateWatermark && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full"
+                disabled={regenerating}
+                onClick={() => void onRegenerateWatermark(draft)}
+              >
+                {regenerating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                )}
+                {hasWatermark ? "Regenerate watermark" : "Generate watermark"}
+              </Button>
             )}
           </div>
 
@@ -196,7 +217,7 @@ export function PhotoEditDialog({
             </div>
             {!hasWatermark && (
               <p className="text-xs text-muted-foreground">
-                Upload a watermarked version before enabling this.
+                Generate a watermarked version before enabling this.
               </p>
             )}
           </div>

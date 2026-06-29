@@ -8,6 +8,7 @@ import {
   bulkDeletePhotosSchema,
   bulkUpdatePhotosSchema,
   idSchema,
+  regeneratePhotoWatermarksSchema,
   uploadPhotoSchema,
   updatePhotoSchema,
 } from "../schemas/media";
@@ -212,4 +213,98 @@ export const bulkDeletePhotos = createServerFn({ method: "POST" })
     if (result.error) return { error: result.error, deleted: 0 };
 
     return { error: null, deleted: data.ids.length };
+  });
+
+export const regeneratePhotoWatermarks = createServerFn({ method: "POST" })
+  .validator(zodValidator(regeneratePhotoWatermarksSchema))
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const supabase = getSupabaseServerClient();
+
+    if (data.ids.length === 0) {
+      return { error: "No photos selected.", photos: [], failures: [] };
+    }
+    if (data.ids.length > 200) {
+      return { error: "Select 200 photos or fewer.", photos: [], failures: [] };
+    }
+
+    const { data: rows, error: fetchError } = await supabase
+      .from("photos")
+      .select("id, title, cdn_url, original_url")
+      .in("id", data.ids);
+
+    if (fetchError) {
+      return { error: fetchError.message, photos: [], failures: [] };
+    }
+
+    const byId = new Map((rows ?? []).map((row) => [row.id, row]));
+    const { downloadImage, uploadWatermarkedToFivemanage } = await import("../watermark-image");
+
+    const photos: DbPhoto[] = [];
+    const failures: { id: string; error: string }[] = [];
+
+    for (const id of data.ids) {
+      const photo = byId.get(id);
+      if (!photo) {
+        failures.push({ id, error: "Photo not found." });
+        continue;
+      }
+
+      const sourceUrl = photo.original_url ?? photo.cdn_url;
+      if (!sourceUrl) {
+        failures.push({ id, error: "Photo has no source image." });
+        continue;
+      }
+
+      try {
+        const { buffer, mimeType } = await downloadImage(sourceUrl);
+        if (buffer.byteLength > MAX_UPLOAD_BYTES) {
+          failures.push({ id, error: "Source image exceeds 15 MB limit." });
+          continue;
+        }
+
+        const baseName =
+          photo.title
+            .trim()
+            .replace(/[^\w.-]+/g, "-")
+            .replace(/^-+|-+$/g, "") || "photo";
+        const watermarkedCdnUrl = await uploadWatermarkedToFivemanage(buffer, mimeType, {
+          filename: `${baseName}-wm`,
+          photoId: photo.id,
+          title: photo.title,
+        });
+
+        const { data: updated, error: updateError } = await supabase
+          .from("photos")
+          .update({
+            watermarked_cdn_url: watermarkedCdnUrl,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", photo.id)
+          .select(PHOTO_SELECT)
+          .single();
+
+        if (updateError) {
+          failures.push({ id, error: updateError.message });
+          continue;
+        }
+
+        photos.push(updated as DbPhoto);
+      } catch (err) {
+        failures.push({
+          id,
+          error: err instanceof Error ? err.message : "Watermark generation failed.",
+        });
+      }
+    }
+
+    if (photos.length === 0) {
+      return {
+        error: failures[0]?.error ?? "Watermark generation failed.",
+        photos,
+        failures,
+      };
+    }
+
+    return { error: null, photos, failures };
   });
