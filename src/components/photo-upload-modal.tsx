@@ -197,11 +197,16 @@ export function PhotoUploadModal({
         stopProgress();
       }
 
-      if (result.error || !result.photo) {
+      if (!result || result.error || !result.photo) {
         setItems((prev) =>
           prev.map((entry) =>
             entry.id === item.id
-              ? { ...entry, status: "error", progress: 0, error: result.error ?? "Upload failed." }
+              ? {
+                  ...entry,
+                  status: "error",
+                  progress: 0,
+                  error: result?.error ?? "Upload failed.",
+                }
               : entry,
           ),
         );

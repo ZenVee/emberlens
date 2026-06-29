@@ -29,7 +29,20 @@ export function useUploadPhotoMutation() {
   const uploadFn = useServerFn(uploadPhoto);
 
   return useMutation({
-    mutationFn: (data: Parameters<typeof uploadFn>[0]["data"]) => uploadFn({ data }),
+    mutationFn: async (data: Parameters<typeof uploadFn>[0]["data"]) => {
+      try {
+        const result = await uploadFn({ data });
+        if (!result || typeof result !== "object") {
+          return { error: "Upload failed. Please try again.", photo: null };
+        }
+        return result;
+      } catch (err) {
+        return {
+          error: err instanceof Error ? err.message : "Upload failed.",
+          photo: null,
+        };
+      }
+    },
   });
 }
 

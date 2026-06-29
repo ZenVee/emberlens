@@ -23,12 +23,36 @@ function decodeInlineAsset(inline: string): Uint8Array {
   return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 }
 
-function toRgbaImage(png: { width: number; height: number; data: ArrayLike<number> }): RgbaImage {
+function toRgbaImage(image: { width: number; height: number; data: ArrayLike<number> }): RgbaImage {
   return {
-    data: png.data instanceof Uint8ClampedArray ? png.data : new Uint8ClampedArray(png.data),
-    width: png.width,
-    height: png.height,
+    data: ensureRgba(image.data, image.width, image.height),
+    width: image.width,
+    height: image.height,
   };
+}
+
+function ensureRgba(data: ArrayLike<number>, width: number, height: number): Uint8ClampedArray {
+  const pixelCount = width * height;
+  const rgba = new Uint8ClampedArray(pixelCount * 4);
+
+  if (data.length === pixelCount * 4) {
+    rgba.set(data);
+    return rgba;
+  }
+
+  if (data.length === pixelCount * 3) {
+    for (let i = 0; i < pixelCount; i++) {
+      const src = i * 3;
+      const dst = i * 4;
+      rgba[dst] = data[src];
+      rgba[dst + 1] = data[src + 1];
+      rgba[dst + 2] = data[src + 2];
+      rgba[dst + 3] = 255;
+    }
+    return rgba;
+  }
+
+  throw new Error(`Unsupported image data size (${data.length} bytes for ${width}x${height}).`);
 }
 
 function getWatermarkOverlay(): RgbaImage {
@@ -78,7 +102,7 @@ function decodeImageBuffer(imageBuffer: Uint8Array, mimeType: string): RgbaImage
 
   const decoded = jpeg.decode(imageBuffer, { useTArray: true });
   return {
-    data: new Uint8ClampedArray(decoded.data),
+    data: ensureRgba(decoded.data, decoded.width, decoded.height),
     width: decoded.width,
     height: decoded.height,
   };

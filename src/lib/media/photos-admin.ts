@@ -15,6 +15,7 @@ import {
 import { getSupabaseServerClient } from "../supabase";
 import { deletePhotosWithAssets, linkPhotoToProject } from "./photo-assets";
 import {
+  decodeBase64Upload,
   extensionForMime,
   MAX_UPLOAD_BYTES,
   PHOTO_SELECT,
@@ -25,83 +26,91 @@ import {
 export const uploadPhoto = createServerFn({ method: "POST" })
   .validator(zodValidator(uploadPhotoSchema))
   .handler(async ({ data }) => {
-    const { supabase, user } = await requireAdmin();
-
-    const categoryError = await validatePhotoCategory(data.category);
-    if (categoryError) {
-      return { error: categoryError, photo: null };
-    }
-
-    const folderResult = await resolveFolderId(supabase, data.folderId);
-    if (folderResult !== null && typeof folderResult === "object") {
-      return { error: folderResult.error, photo: null };
-    }
-    const resolvedFolderId = typeof folderResult === "string" ? folderResult : null;
-
-    const title = data.title.trim();
-    if (title.length < 1) {
-      return { error: "Title is required.", photo: null };
-    }
-
-    const buffer = Buffer.from(data.fileBase64, "base64");
-    if (buffer.byteLength > MAX_UPLOAD_BYTES) {
-      return { error: "File must be 15 MB or smaller.", photo: null };
-    }
-
-    const ext = extensionForMime(data.mimeType);
-    const baseName = data.filename.replace(/\.[^.]+$/, "") || "photo";
-
-    const cleanUpload = await uploadToFivemanage(buffer, {
-      filename: `${baseName}.${ext}`,
-      mimeType: data.mimeType,
-      path: "gallery",
-      metadata: { title },
-    });
-
-    let watermarkedCdnUrl: string | null = null;
     try {
-      const { uploadWatermarkedToFivemanage } = await import("../watermark-image");
-      watermarkedCdnUrl = await uploadWatermarkedToFivemanage(buffer, data.mimeType, {
-        filename: `${baseName}-wm`,
-        title,
-      });
-    } catch (watermarkError) {
-      console.error("Watermark generation failed:", watermarkError);
-    }
+      const { supabase, user } = await requireAdmin();
 
-    const { data: photo, error } = await supabase
-      .from("photos")
-      .insert({
-        title,
-        category: data.category,
-        fivemanage_id: cleanUpload.id,
-        cdn_url: cleanUpload.url,
-        original_url: cleanUpload.originalUrl ?? null,
-        watermarked_cdn_url: watermarkedCdnUrl,
-        uploaded_by: user.id,
-        folder_id: resolvedFolderId,
-        gallery_orientation: data.gallery_orientation ?? "portrait",
-      })
-      .select(PHOTO_SELECT)
-      .single();
-
-    if (error) {
-      await deleteFromFivemanage(cleanUpload.id).catch(() => undefined);
-      return { error: error.message, photo: null };
-    }
-
-    const inserted = photo as DbPhoto;
-
-    if (data.projectId) {
-      const linkError = await linkPhotoToProject(supabase, data.projectId, inserted.id);
-      if (linkError) {
-        await supabase.from("photos").delete().eq("id", inserted.id);
-        await deleteFromFivemanage(cleanUpload.id).catch(() => undefined);
-        return { error: linkError, photo: null };
+      const categoryError = await validatePhotoCategory(data.category);
+      if (categoryError) {
+        return { error: categoryError, photo: null };
       }
-    }
 
-    return { error: null, photo: inserted };
+      const folderResult = await resolveFolderId(supabase, data.folderId);
+      if (folderResult !== null && typeof folderResult === "object") {
+        return { error: folderResult.error, photo: null };
+      }
+      const resolvedFolderId = typeof folderResult === "string" ? folderResult : null;
+
+      const title = data.title.trim();
+      if (title.length < 1) {
+        return { error: "Title is required.", photo: null };
+      }
+
+      const buffer = decodeBase64Upload(data.fileBase64);
+      if (buffer.byteLength > MAX_UPLOAD_BYTES) {
+        return { error: "File must be 15 MB or smaller.", photo: null };
+      }
+
+      const ext = extensionForMime(data.mimeType);
+      const baseName = data.filename.replace(/\.[^.]+$/, "") || "photo";
+
+      const cleanUpload = await uploadToFivemanage(buffer, {
+        filename: `${baseName}.${ext}`,
+        mimeType: data.mimeType,
+        path: "gallery",
+        metadata: { title },
+      });
+
+      let watermarkedCdnUrl: string | null = null;
+      try {
+        const { uploadWatermarkedToFivemanage } = await import("../watermark-image");
+        watermarkedCdnUrl = await uploadWatermarkedToFivemanage(buffer, data.mimeType, {
+          filename: `${baseName}-wm`,
+          title,
+        });
+      } catch (watermarkError) {
+        console.error("Watermark generation failed:", watermarkError);
+      }
+
+      const { data: photo, error } = await supabase
+        .from("photos")
+        .insert({
+          title,
+          category: data.category,
+          fivemanage_id: cleanUpload.id,
+          cdn_url: cleanUpload.url,
+          original_url: cleanUpload.originalUrl ?? null,
+          watermarked_cdn_url: watermarkedCdnUrl,
+          uploaded_by: user.id,
+          folder_id: resolvedFolderId,
+          gallery_orientation: data.gallery_orientation ?? "portrait",
+        })
+        .select(PHOTO_SELECT)
+        .single();
+
+      if (error) {
+        await deleteFromFivemanage(cleanUpload.id).catch(() => undefined);
+        return { error: error.message, photo: null };
+      }
+
+      const inserted = photo as DbPhoto;
+
+      if (data.projectId) {
+        const linkError = await linkPhotoToProject(supabase, data.projectId, inserted.id);
+        if (linkError) {
+          await supabase.from("photos").delete().eq("id", inserted.id);
+          await deleteFromFivemanage(cleanUpload.id).catch(() => undefined);
+          return { error: linkError, photo: null };
+        }
+      }
+
+      return { error: null, photo: inserted };
+    } catch (err) {
+      console.error("uploadPhoto failed:", err);
+      return {
+        error: err instanceof Error ? err.message : "Upload failed.",
+        photo: null,
+      };
+    }
   });
 
 export const updatePhoto = createServerFn({ method: "POST" })

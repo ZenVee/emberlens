@@ -12,6 +12,13 @@ export const PROJECT_SELECT =
 
 export const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
+export function decodeBase64Upload(base64: string): Uint8Array {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 export type SupabaseClient = ReturnType<typeof getSupabaseServerClient>;
 
 export async function validatePhotoCategory(category: string): Promise<string | null> {
