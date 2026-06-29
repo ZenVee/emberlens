@@ -114,20 +114,14 @@ function compositeCenter(base: RgbaImage, overlay: RgbaImage): RgbaImage {
   return { data, width: base.width, height: base.height };
 }
 
-function encodeImage(
-  image: RgbaImage,
-  mimeType: string,
-): { buffer: Buffer; mimeType: string } {
+function encodeImage(image: RgbaImage, mimeType: string): { buffer: Buffer; mimeType: string } {
   if (mimeType === "image/png") {
     const png = new PNG({ width: image.width, height: image.height });
     png.data = Buffer.from(image.data);
     return { buffer: PNG.sync.write(png), mimeType: "image/png" };
   }
 
-  const encoded = jpeg.encode(
-    { data: image.data, width: image.width, height: image.height },
-    82,
-  );
+  const encoded = jpeg.encode({ data: image.data, width: image.width, height: image.height }, 82);
   return { buffer: Buffer.from(encoded.data), mimeType: "image/jpeg" };
 }
 
