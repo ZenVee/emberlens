@@ -55,9 +55,7 @@ function AdminLayout() {
   const isBare = pathname === "/admin/login" || pathname === "/admin/onboarding";
 
   return (
-    <AdminPageMetaProvider>
-      {isBare ? <Outlet /> : <AdminLayoutShell />}
-    </AdminPageMetaProvider>
+    <AdminPageMetaProvider>{isBare ? <Outlet /> : <AdminLayoutShell />}</AdminPageMetaProvider>
   );
 }
 
