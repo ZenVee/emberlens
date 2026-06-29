@@ -1,12 +1,18 @@
-import { decode as decodeWebp } from "@jsquash/webp";
-import { Image } from "imagescript";
+import jpeg from "jpeg-js";
+import { PNG } from "pngjs";
 
 import watermarkBase64 from "../assets/watermark.png?inline";
 import { uploadToFivemanage } from "./fivemanage";
 
 const MAX_WATERMARK_PX = 2560;
 
-let watermarkOverlayPromise: Promise<Image> | null = null;
+type RgbaImage = {
+  data: Uint8ClampedArray;
+  width: number;
+  height: number;
+};
+
+let watermarkOverlay: RgbaImage | null = null;
 
 function extensionForMime(mimeType: string): "png" | "jpg" {
   return mimeType === "image/png" ? "png" : "jpg";
@@ -17,69 +23,123 @@ function decodeInlineAsset(inline: string): Buffer {
   return Buffer.from(base64, "base64");
 }
 
-function getWatermarkOverlay(): Promise<Image> {
-  watermarkOverlayPromise ??= Promise.resolve().then(() =>
-    Image.decode(decodeInlineAsset(watermarkBase64)),
-  );
-  return watermarkOverlayPromise;
+function getWatermarkOverlay(): RgbaImage {
+  if (watermarkOverlay) return watermarkOverlay;
+
+  const png = PNG.sync.read(decodeInlineAsset(watermarkBase64));
+  watermarkOverlay = {
+    data: new Uint8ClampedArray(png.data),
+    width: png.width,
+    height: png.height,
+  };
+  return watermarkOverlay;
 }
 
-function fitWithinMaxDimension(image: Image, maxPx: number): Image {
+function fitWithinMaxDimension(image: RgbaImage, maxPx: number): RgbaImage {
   const maxDim = Math.max(image.width, image.height);
   if (maxDim <= maxPx) return image;
 
-  const scale = maxPx / maxDim;
-  return image.resize(
-    Math.max(1, Math.round(image.width * scale)),
-    Math.max(1, Math.round(image.height * scale)),
-  );
-}
+  const width = Math.max(1, Math.round((image.width * maxPx) / maxDim));
+  const height = Math.max(1, Math.round((image.height * maxPx) / maxDim));
+  const data = new Uint8ClampedArray(width * height * 4);
 
-function isWebpBuffer(buffer: Buffer): boolean {
-  return (
-    buffer.length >= 12 &&
-    buffer.toString("ascii", 0, 4) === "RIFF" &&
-    buffer.toString("ascii", 8, 12) === "WEBP"
-  );
-}
-
-async function decodeImageBuffer(imageBuffer: Buffer): Promise<Image> {
-  try {
-    return await Image.decode(imageBuffer);
-  } catch (error) {
-    if (!isWebpBuffer(imageBuffer)) throw error;
-
-    const imageData = await decodeWebp(
-      imageBuffer.buffer.slice(
-        imageBuffer.byteOffset,
-        imageBuffer.byteOffset + imageBuffer.byteLength,
-      ),
-    );
-    const image = new Image(imageData.width, imageData.height);
-    image.bitmap.set(imageData.data);
-    return image;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const srcX = Math.min(image.width - 1, Math.floor((x * image.width) / width));
+      const srcY = Math.min(image.height - 1, Math.floor((y * image.height) / height));
+      const srcI = (srcY * image.width + srcX) * 4;
+      const dstI = (y * width + x) * 4;
+      data[dstI] = image.data[srcI];
+      data[dstI + 1] = image.data[srcI + 1];
+      data[dstI + 2] = image.data[srcI + 2];
+      data[dstI + 3] = image.data[srcI + 3];
+    }
   }
+
+  return { data, width, height };
 }
 
-export async function applyStudioWatermark(
+function isPngBuffer(buffer: Buffer): boolean {
+  return (
+    buffer.length >= 8 &&
+    buffer[0] === 0x89 &&
+    buffer[1] === 0x50 &&
+    buffer[2] === 0x4e &&
+    buffer[3] === 0x47
+  );
+}
+
+function decodeImageBuffer(imageBuffer: Buffer, mimeType: string): RgbaImage {
+  if (mimeType === "image/png" || isPngBuffer(imageBuffer)) {
+    const png = PNG.sync.read(imageBuffer);
+    return {
+      data: new Uint8ClampedArray(png.data),
+      width: png.width,
+      height: png.height,
+    };
+  }
+
+  const decoded = jpeg.decode(imageBuffer, { useTArray: true });
+  return {
+    data: new Uint8ClampedArray(decoded.data),
+    width: decoded.width,
+    height: decoded.height,
+  };
+}
+
+function compositeCenter(base: RgbaImage, overlay: RgbaImage): RgbaImage {
+  const data = new Uint8ClampedArray(base.data);
+  const x0 = Math.round((base.width - overlay.width) / 2);
+  const y0 = Math.round((base.height - overlay.height) / 2);
+
+  for (let oy = 0; oy < overlay.height; oy++) {
+    for (let ox = 0; ox < overlay.width; ox++) {
+      const bx = x0 + ox;
+      const by = y0 + oy;
+      if (bx < 0 || by < 0 || bx >= base.width || by >= base.height) continue;
+
+      const oi = (oy * overlay.width + ox) * 4;
+      const alpha = overlay.data[oi + 3] / 255;
+      if (alpha <= 0) continue;
+
+      const bi = (by * base.width + bx) * 4;
+      const inv = 1 - alpha;
+      data[bi] = Math.round(overlay.data[oi] * alpha + data[bi] * inv);
+      data[bi + 1] = Math.round(overlay.data[oi + 1] * alpha + data[bi + 1] * inv);
+      data[bi + 2] = Math.round(overlay.data[oi + 2] * alpha + data[bi + 2] * inv);
+      data[bi + 3] = Math.round(overlay.data[oi + 3] + data[bi + 3] * inv);
+    }
+  }
+
+  return { data, width: base.width, height: base.height };
+}
+
+function encodeImage(
+  image: RgbaImage,
+  mimeType: string,
+): { buffer: Buffer; mimeType: string } {
+  if (mimeType === "image/png") {
+    const png = new PNG({ width: image.width, height: image.height });
+    png.data = Buffer.from(image.data);
+    return { buffer: PNG.sync.write(png), mimeType: "image/png" };
+  }
+
+  const encoded = jpeg.encode(
+    { data: image.data, width: image.width, height: image.height },
+    82,
+  );
+  return { buffer: Buffer.from(encoded.data), mimeType: "image/jpeg" };
+}
+
+export function applyStudioWatermark(
   imageBuffer: Buffer,
   mimeType = "image/jpeg",
-): Promise<{ buffer: Buffer; mimeType: string }> {
-  const decoded = await decodeImageBuffer(imageBuffer);
+): { buffer: Buffer; mimeType: string } {
+  const decoded = decodeImageBuffer(imageBuffer, mimeType);
   const image = fitWithinMaxDimension(decoded, MAX_WATERMARK_PX);
-  const overlay = await getWatermarkOverlay();
-
-  const x = Math.round((image.width - overlay.width) / 2);
-  const y = Math.round((image.height - overlay.height) / 2);
-  image.composite(overlay, x, y);
-
-  const ext = extensionForMime(mimeType);
-  const encoded = ext === "png" ? await image.encode(1) : await image.encodeJPEG(82);
-
-  return {
-    buffer: Buffer.from(encoded),
-    mimeType: ext === "png" ? "image/png" : "image/jpeg",
-  };
+  const overlay = getWatermarkOverlay();
+  const composited = compositeCenter(image, overlay);
+  return encodeImage(composited, mimeType);
 }
 
 export async function uploadWatermarkedToFivemanage(
@@ -87,7 +147,7 @@ export async function uploadWatermarkedToFivemanage(
   mimeType: string,
   options: { filename: string; photoId?: string; title?: string },
 ): Promise<string> {
-  const watermarked = await applyStudioWatermark(imageBuffer, mimeType);
+  const watermarked = applyStudioWatermark(imageBuffer, mimeType);
   const ext = extensionForMime(watermarked.mimeType);
   const uploaded = await uploadToFivemanage(watermarked.buffer, {
     filename: `${options.filename}.${ext}`,
