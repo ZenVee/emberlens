@@ -15,7 +15,7 @@ function getFivemanageApiKey() {
 }
 
 export async function uploadToFivemanage(
-  buffer: Buffer,
+  buffer: Uint8Array | Buffer,
   options: {
     filename: string;
     mimeType?: string;

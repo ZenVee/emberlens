@@ -1,5 +1,5 @@
+import { decode as decodePng, encode as encodePng } from "fast-png";
 import jpeg from "jpeg-js";
-import { PNG } from "pngjs";
 
 import watermarkBase64 from "../assets/watermark.png?inline";
 import { uploadToFivemanage } from "./fivemanage";
@@ -18,20 +18,22 @@ function extensionForMime(mimeType: string): "png" | "jpg" {
   return mimeType === "image/png" ? "png" : "jpg";
 }
 
-function decodeInlineAsset(inline: string): Buffer {
+function decodeInlineAsset(inline: string): Uint8Array {
   const base64 = inline.includes(",") ? inline.slice(inline.indexOf(",") + 1) : inline;
-  return Buffer.from(base64, "base64");
+  return Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+}
+
+function toRgbaImage(png: { width: number; height: number; data: ArrayLike<number> }): RgbaImage {
+  return {
+    data: png.data instanceof Uint8ClampedArray ? png.data : new Uint8ClampedArray(png.data),
+    width: png.width,
+    height: png.height,
+  };
 }
 
 function getWatermarkOverlay(): RgbaImage {
   if (watermarkOverlay) return watermarkOverlay;
-
-  const png = PNG.sync.read(decodeInlineAsset(watermarkBase64));
-  watermarkOverlay = {
-    data: new Uint8ClampedArray(png.data),
-    width: png.width,
-    height: png.height,
-  };
+  watermarkOverlay = toRgbaImage(decodePng(decodeInlineAsset(watermarkBase64)));
   return watermarkOverlay;
 }
 
@@ -59,7 +61,7 @@ function fitWithinMaxDimension(image: RgbaImage, maxPx: number): RgbaImage {
   return { data, width, height };
 }
 
-function isPngBuffer(buffer: Buffer): boolean {
+function isPngBuffer(buffer: Uint8Array): boolean {
   return (
     buffer.length >= 8 &&
     buffer[0] === 0x89 &&
@@ -69,14 +71,9 @@ function isPngBuffer(buffer: Buffer): boolean {
   );
 }
 
-function decodeImageBuffer(imageBuffer: Buffer, mimeType: string): RgbaImage {
+function decodeImageBuffer(imageBuffer: Uint8Array, mimeType: string): RgbaImage {
   if (mimeType === "image/png" || isPngBuffer(imageBuffer)) {
-    const png = PNG.sync.read(imageBuffer);
-    return {
-      data: new Uint8ClampedArray(png.data),
-      width: png.width,
-      height: png.height,
-    };
+    return toRgbaImage(decodePng(imageBuffer));
   }
 
   const decoded = jpeg.decode(imageBuffer, { useTArray: true });
@@ -114,21 +111,26 @@ function compositeCenter(base: RgbaImage, overlay: RgbaImage): RgbaImage {
   return { data, width: base.width, height: base.height };
 }
 
-function encodeImage(image: RgbaImage, mimeType: string): { buffer: Buffer; mimeType: string } {
+function encodeImage(image: RgbaImage, mimeType: string): { buffer: Uint8Array; mimeType: string } {
   if (mimeType === "image/png") {
-    const png = new PNG({ width: image.width, height: image.height });
-    png.data = Buffer.from(image.data);
-    return { buffer: PNG.sync.write(png), mimeType: "image/png" };
+    const encoded = encodePng({
+      width: image.width,
+      height: image.height,
+      data: image.data,
+      depth: 8,
+      channels: 4,
+    });
+    return { buffer: encoded, mimeType: "image/png" };
   }
 
   const encoded = jpeg.encode({ data: image.data, width: image.width, height: image.height }, 82);
-  return { buffer: Buffer.from(encoded.data), mimeType: "image/jpeg" };
+  return { buffer: encoded.data, mimeType: "image/jpeg" };
 }
 
 export function applyStudioWatermark(
-  imageBuffer: Buffer,
+  imageBuffer: Uint8Array,
   mimeType = "image/jpeg",
-): { buffer: Buffer; mimeType: string } {
+): { buffer: Uint8Array; mimeType: string } {
   const decoded = decodeImageBuffer(imageBuffer, mimeType);
   const image = fitWithinMaxDimension(decoded, MAX_WATERMARK_PX);
   const overlay = getWatermarkOverlay();
@@ -137,7 +139,7 @@ export function applyStudioWatermark(
 }
 
 export async function uploadWatermarkedToFivemanage(
-  imageBuffer: Buffer,
+  imageBuffer: Uint8Array,
   mimeType: string,
   options: { filename: string; photoId?: string; title?: string },
 ): Promise<string> {
@@ -168,18 +170,20 @@ function mimeTypeFromUrl(url: string): string | undefined {
   return undefined;
 }
 
-function inferImageMimeType(buffer: Buffer, hint?: string): string {
+function inferImageMimeType(buffer: Uint8Array, hint?: string): string {
   if (hint === "image/png" || isPngBuffer(buffer)) return "image/png";
   return "image/jpeg";
 }
 
-export async function downloadImage(url: string): Promise<{ buffer: Buffer; mimeType: string }> {
+export async function downloadImage(
+  url: string,
+): Promise<{ buffer: Uint8Array; mimeType: string }> {
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Could not download image (${response.status}).`);
   }
 
-  const buffer = Buffer.from(await response.arrayBuffer());
+  const buffer = new Uint8Array(await response.arrayBuffer());
   const headerMime = response.headers.get("content-type")?.split(";")[0].trim();
   const mimeType =
     headerMime && headerMime.startsWith("image/")
