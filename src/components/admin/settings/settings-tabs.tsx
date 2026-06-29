@@ -32,6 +32,7 @@ type EditorProps = Pick<
   | "updateField"
   | "updateService"
   | "updateCategoryList"
+  | "saveOnBlur"
   | "heroUrl"
   | "heroRef"
   | "uploadingHero"
@@ -57,18 +58,21 @@ export function SettingsBrandTab(editor: EditorProps) {
             <Input
               value={form.studio_name}
               onChange={(e) => editor.updateField("studio_name", e.target.value)}
+              onBlur={editor.saveOnBlur}
             />
           </FormField>
           <FormField label="Tagline">
             <Input
               value={form.tagline}
               onChange={(e) => editor.updateField("tagline", e.target.value)}
+              onBlur={editor.saveOnBlur}
             />
           </FormField>
           <FormField label="Location" className="sm:col-span-2">
             <Input
               value={form.location}
               onChange={(e) => editor.updateField("location", e.target.value)}
+              onBlur={editor.saveOnBlur}
             />
           </FormField>
           <FormField label="Bio" className="sm:col-span-2">
@@ -76,6 +80,7 @@ export function SettingsBrandTab(editor: EditorProps) {
               rows={4}
               value={form.bio}
               onChange={(e) => editor.updateField("bio", e.target.value)}
+              onBlur={editor.saveOnBlur}
             />
           </FormField>
         </div>
@@ -146,6 +151,7 @@ export function SettingsHomepageTab(editor: EditorProps) {
               <Input
                 value={form.hero_title}
                 onChange={(e) => editor.updateField("hero_title", e.target.value)}
+                onBlur={editor.saveOnBlur}
               />
             </FormField>
             <FormField label="Supporting text">
@@ -153,6 +159,7 @@ export function SettingsHomepageTab(editor: EditorProps) {
                 rows={5}
                 value={form.hero_text}
                 onChange={(e) => editor.updateField("hero_text", e.target.value)}
+                onBlur={editor.saveOnBlur}
               />
             </FormField>
           </div>
@@ -165,12 +172,14 @@ export function SettingsHomepageTab(editor: EditorProps) {
             <Input
               value={form.services_eyebrow}
               onChange={(e) => editor.updateField("services_eyebrow", e.target.value)}
+              onBlur={editor.saveOnBlur}
             />
           </FormField>
           <FormField label="Section title">
             <Input
               value={form.services_title}
               onChange={(e) => editor.updateField("services_title", e.target.value)}
+              onBlur={editor.saveOnBlur}
             />
           </FormField>
         </div>
@@ -190,6 +199,7 @@ export function SettingsHomepageTab(editor: EditorProps) {
                     editor.updateField(
                       "services",
                       form.services.filter((_, i) => i !== index),
+                      { save: true },
                     )
                   }
                   className="h-8 w-8 text-muted-foreground hover:text-destructive"
@@ -203,12 +213,14 @@ export function SettingsHomepageTab(editor: EditorProps) {
                   <Input
                     value={service.title}
                     onChange={(e) => editor.updateService(index, { title: e.target.value })}
+                    onBlur={editor.saveOnBlur}
                   />
                 </FormField>
                 <FormField label="Price">
                   <Input
                     value={service.price}
                     onChange={(e) => editor.updateService(index, { price: e.target.value })}
+                    onBlur={editor.saveOnBlur}
                   />
                 </FormField>
                 <FormField label="Description" className="sm:col-span-2">
@@ -216,6 +228,7 @@ export function SettingsHomepageTab(editor: EditorProps) {
                     rows={2}
                     value={service.description}
                     onChange={(e) => editor.updateService(index, { description: e.target.value })}
+                    onBlur={editor.saveOnBlur}
                   />
                 </FormField>
               </div>
@@ -226,10 +239,11 @@ export function SettingsHomepageTab(editor: EditorProps) {
             variant="outline"
             size="sm"
             onClick={() =>
-              editor.updateField("services", [
-                ...form.services,
-                { title: "", description: "", price: "" },
-              ])
+              editor.updateField(
+                "services",
+                [...form.services, { title: "", description: "", price: "" }],
+                { save: true },
+              )
             }
             className="rounded-full"
           >
@@ -252,12 +266,14 @@ export function SettingsPagesTab(editor: EditorProps) {
               <Input
                 value={form.gallery_eyebrow}
                 onChange={(e) => editor.updateField("gallery_eyebrow", e.target.value)}
+                onBlur={editor.saveOnBlur}
               />
             </FormField>
             <FormField label="Page title">
               <Input
                 value={form.gallery_title}
                 onChange={(e) => editor.updateField("gallery_title", e.target.value)}
+                onBlur={editor.saveOnBlur}
               />
             </FormField>
             <FormField label="Page description">
@@ -265,6 +281,7 @@ export function SettingsPagesTab(editor: EditorProps) {
                 rows={3}
                 value={form.gallery_description}
                 onChange={(e) => editor.updateField("gallery_description", e.target.value)}
+                onBlur={editor.saveOnBlur}
               />
             </FormField>
             <div className="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-background/40 px-4 py-3">
@@ -278,7 +295,7 @@ export function SettingsPagesTab(editor: EditorProps) {
                 id="gallery-categories"
                 checked={form.gallery_show_categories}
                 onCheckedChange={(checked) =>
-                  editor.updateField("gallery_show_categories", checked)
+                  editor.updateField("gallery_show_categories", checked, { save: true })
                 }
               />
             </div>
@@ -294,12 +311,14 @@ export function SettingsPagesTab(editor: EditorProps) {
               <Input
                 value={form.projects_eyebrow}
                 onChange={(e) => editor.updateField("projects_eyebrow", e.target.value)}
+                onBlur={editor.saveOnBlur}
               />
             </FormField>
             <FormField label="Page title">
               <Input
                 value={form.projects_title}
                 onChange={(e) => editor.updateField("projects_title", e.target.value)}
+                onBlur={editor.saveOnBlur}
               />
             </FormField>
             <FormField label="Page description">
@@ -307,6 +326,7 @@ export function SettingsPagesTab(editor: EditorProps) {
                 rows={3}
                 value={form.projects_description}
                 onChange={(e) => editor.updateField("projects_description", e.target.value)}
+                onBlur={editor.saveOnBlur}
               />
             </FormField>
           </div>
@@ -323,19 +343,21 @@ export function SettingsPagesTab(editor: EditorProps) {
             label="Photo categories"
             hint="Shown in the gallery filter and photo upload form."
             items={form.photo_categories}
-            onChange={(items) => editor.updateField("photo_categories", items)}
+            onChange={(items) => editor.updateField("photo_categories", items, { save: true })}
             onItemChange={(index, value) =>
               editor.updateCategoryList("photo_categories", index, value)
             }
+            onBlur={editor.saveOnBlur}
           />
           <CategoryListEditor
             label="Project categories"
             hint="Used when creating and editing projects."
             items={form.project_categories}
-            onChange={(items) => editor.updateField("project_categories", items)}
+            onChange={(items) => editor.updateField("project_categories", items, { save: true })}
             onItemChange={(index, value) =>
               editor.updateCategoryList("project_categories", index, value)
             }
+            onBlur={editor.saveOnBlur}
           />
           <CategoryListEditor
             label="Session types"
@@ -343,10 +365,11 @@ export function SettingsPagesTab(editor: EditorProps) {
             placeholder="Session type"
             addLabel="Add session type"
             items={form.session_types}
-            onChange={(items) => editor.updateField("session_types", items)}
+            onChange={(items) => editor.updateField("session_types", items, { save: true })}
             onItemChange={(index, value) =>
               editor.updateCategoryList("session_types", index, value)
             }
+            onBlur={editor.saveOnBlur}
             className="lg:col-span-2"
           />
         </div>
@@ -355,7 +378,9 @@ export function SettingsPagesTab(editor: EditorProps) {
   );
 }
 
-export function SettingsThemeTab(editor: Pick<SiteSettingsEditorState, "form" | "updateField">) {
+export function SettingsThemeTab(
+  editor: Pick<SiteSettingsEditorState, "form" | "updateField" | "saveOnBlur">,
+) {
   const form = useForm(editor);
   return (
     <TabsContent value="theme" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
@@ -370,24 +395,28 @@ export function SettingsThemeTab(editor: Pick<SiteSettingsEditorState, "form" | 
               hint="Buttons and links"
               value={form.theme_primary_color}
               onChange={(value) => editor.updateField("theme_primary_color", value)}
+              onBlur={editor.saveOnBlur}
             />
             <ColorField
               label="Secondary"
               hint="Subtle backgrounds"
               value={form.theme_secondary_color}
               onChange={(value) => editor.updateField("theme_secondary_color", value)}
+              onBlur={editor.saveOnBlur}
             />
             <ColorField
               label="Accent"
               hint="Highlights and gradients"
               value={form.theme_accent_color}
               onChange={(value) => editor.updateField("theme_accent_color", value)}
+              onBlur={editor.saveOnBlur}
             />
             <ColorField
               label="Ember"
               hint="Brand accent color"
               value={form.theme_ember_color}
               onChange={(value) => editor.updateField("theme_ember_color", value)}
+              onBlur={editor.saveOnBlur}
             />
           </div>
         </SettingsPanel>
@@ -400,7 +429,9 @@ export function SettingsThemeTab(editor: Pick<SiteSettingsEditorState, "form" | 
             <FormField label="Body font">
               <Select
                 value={form.theme_font_sans}
-                onValueChange={(value) => editor.updateField("theme_font_sans", value)}
+                onValueChange={(value) =>
+                  editor.updateField("theme_font_sans", value, { save: true })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -417,7 +448,9 @@ export function SettingsThemeTab(editor: Pick<SiteSettingsEditorState, "form" | 
             <FormField label="Heading font">
               <Select
                 value={form.theme_font_display}
-                onValueChange={(value) => editor.updateField("theme_font_display", value)}
+                onValueChange={(value) =>
+                  editor.updateField("theme_font_display", value, { save: true })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -434,7 +467,9 @@ export function SettingsThemeTab(editor: Pick<SiteSettingsEditorState, "form" | 
             <FormField label="Corner radius">
               <Select
                 value={form.theme_border_radius}
-                onValueChange={(value) => editor.updateField("theme_border_radius", value)}
+                onValueChange={(value) =>
+                  editor.updateField("theme_border_radius", value, { save: true })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -507,7 +542,9 @@ export function SettingsThemeTab(editor: Pick<SiteSettingsEditorState, "form" | 
   );
 }
 
-export function SettingsFooterTab(editor: Pick<SiteSettingsEditorState, "form" | "updateField">) {
+export function SettingsFooterTab(
+  editor: Pick<SiteSettingsEditorState, "form" | "updateField" | "saveOnBlur">,
+) {
   const form = useForm(editor);
   return (
     <TabsContent value="footer" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
@@ -520,6 +557,7 @@ export function SettingsFooterTab(editor: Pick<SiteSettingsEditorState, "form" |
             <Input
               value={form.footer_tagline}
               onChange={(e) => editor.updateField("footer_tagline", e.target.value)}
+              onBlur={editor.saveOnBlur}
             />
           </FormField>
 
@@ -530,6 +568,7 @@ export function SettingsFooterTab(editor: Pick<SiteSettingsEditorState, "form" |
                 <Input
                   value={form.footer_studio_heading}
                   onChange={(e) => editor.updateField("footer_studio_heading", e.target.value)}
+                  onBlur={editor.saveOnBlur}
                 />
               </FormField>
               <FormField label="Content" hint="One line per row">
@@ -537,6 +576,7 @@ export function SettingsFooterTab(editor: Pick<SiteSettingsEditorState, "form" |
                   rows={3}
                   value={form.footer_studio_body}
                   onChange={(e) => editor.updateField("footer_studio_body", e.target.value)}
+                  onBlur={editor.saveOnBlur}
                 />
               </FormField>
             </div>
@@ -547,6 +587,7 @@ export function SettingsFooterTab(editor: Pick<SiteSettingsEditorState, "form" |
                 <Input
                   value={form.footer_contact_heading}
                   onChange={(e) => editor.updateField("footer_contact_heading", e.target.value)}
+                  onBlur={editor.saveOnBlur}
                 />
               </FormField>
               <FormField label="Content" hint="One line per row">
@@ -554,6 +595,7 @@ export function SettingsFooterTab(editor: Pick<SiteSettingsEditorState, "form" |
                   rows={3}
                   value={form.footer_contact_body}
                   onChange={(e) => editor.updateField("footer_contact_body", e.target.value)}
+                  onBlur={editor.saveOnBlur}
                 />
               </FormField>
             </div>
@@ -563,6 +605,7 @@ export function SettingsFooterTab(editor: Pick<SiteSettingsEditorState, "form" |
             <Input
               value={form.footer_copyright}
               onChange={(e) => editor.updateField("footer_copyright", e.target.value)}
+              onBlur={editor.saveOnBlur}
             />
           </FormField>
         </div>

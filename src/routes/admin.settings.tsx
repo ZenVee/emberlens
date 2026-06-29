@@ -74,8 +74,8 @@ function AdminSettings() {
         <SettingsBrandTab {...editor} />
         <SettingsHomepageTab {...editor} />
         <SettingsPagesTab {...editor} />
-        <SettingsThemeTab form={editor.form} updateField={editor.updateField} />
-        <SettingsFooterTab form={editor.form} updateField={editor.updateField} />
+        <SettingsThemeTab form={editor.form} updateField={editor.updateField} saveOnBlur={editor.saveOnBlur} />
+        <SettingsFooterTab form={editor.form} updateField={editor.updateField} saveOnBlur={editor.saveOnBlur} />
       </Tabs>
     </Form>
   );

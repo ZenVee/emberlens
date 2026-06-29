@@ -16,6 +16,7 @@ import { useState, type ReactNode } from "react";
 
 import { prefetchAdminRoute } from "@/lib/admin-queries";
 import { signOut } from "@/lib/auth";
+import { authUserQueryKey } from "@/lib/query-keys";
 
 import { ThemeToggle } from "./theme-toggle";
 
@@ -54,9 +55,15 @@ export function AdminShell({
 
   async function handleSignOut() {
     setSigningOut(true);
-    await signOutFn();
-    await router.invalidate();
-    router.navigate({ to: "/admin/login", search: { error: undefined } });
+    try {
+      await signOutFn();
+      queryClient.setQueryData(authUserQueryKey, null);
+      await queryClient.invalidateQueries({ queryKey: authUserQueryKey });
+      await router.invalidate();
+      await router.navigate({ to: "/" });
+    } finally {
+      setSigningOut(false);
+    }
   }
 
   return (

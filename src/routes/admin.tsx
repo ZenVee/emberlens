@@ -50,12 +50,42 @@ export const Route = createFileRoute("/admin")({
   component: AdminLayout,
 });
 
+const BARE_ADMIN_PATHS = ["/admin/login", "/admin/onboarding"] as const;
+
+function isBareAdminPath(pathname: string) {
+  return (BARE_ADMIN_PATHS as readonly string[]).includes(pathname);
+}
+
+function adminLayoutMode(s: {
+  location: { pathname: string };
+  resolvedLocation?: { pathname: string };
+  isTransitioning: boolean;
+  status: "pending" | "idle";
+}) {
+  const current = s.resolvedLocation?.pathname ?? s.location.pathname;
+  const target = s.location.pathname;
+  const transitioning = s.isTransitioning || s.status === "pending";
+
+  if (transitioning && current.startsWith("/admin") && !target.startsWith("/admin")) {
+    return "exit" as const;
+  }
+
+  if (isBareAdminPath(current) || (transitioning && isBareAdminPath(target))) {
+    return "bare" as const;
+  }
+
+  return "shell" as const;
+}
+
 function AdminLayout() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isBare = pathname === "/admin/login" || pathname === "/admin/onboarding";
+  const mode = useRouterState({ select: adminLayoutMode });
+
+  if (mode === "exit") return null;
 
   return (
-    <AdminPageMetaProvider>{isBare ? <Outlet /> : <AdminLayoutShell />}</AdminPageMetaProvider>
+    <AdminPageMetaProvider>
+      {mode === "bare" ? <Outlet /> : <AdminLayoutShell />}
+    </AdminPageMetaProvider>
   );
 }
 

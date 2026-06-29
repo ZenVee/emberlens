@@ -1,10 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useRouteContext, useRouter } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Camera } from "lucide-react";
 import { useState } from "react";
 
 import { updateDisplayName } from "@/lib/profile";
+import { authUserQueryKey } from "@/lib/query-keys";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export const Route = createFileRoute("/admin/onboarding")({
@@ -16,6 +18,7 @@ function AdminOnboarding() {
   const { user } = useRouteContext({ from: "__root__" });
   const navigate = useNavigate();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const updateDisplayNameFn = useServerFn(updateDisplayName);
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -34,16 +37,22 @@ function AdminOnboarding() {
     setError(null);
     setLoading(true);
 
-    const result = await updateDisplayNameFn({ data: { displayName } });
+    try {
+      const result = await updateDisplayNameFn({ data: { displayName } });
 
-    if (result.error) {
-      setError(result.error);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      await queryClient.invalidateQueries({ queryKey: authUserQueryKey });
+      await router.invalidate();
+      await navigate({ to: "/admin" });
+    } catch {
+      setError("Could not save your display name. Please try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    await router.invalidate();
-    navigate({ to: "/admin" });
   }
 
   return (

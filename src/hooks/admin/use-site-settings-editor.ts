@@ -22,7 +22,7 @@ import {
   type SiteSettings,
   type SiteService,
 } from "@/lib/site-settings-types";
-import { useAutoSave } from "@/hooks/use-auto-save";
+import type { AutoSaveStatus } from "@/hooks/use-auto-save";
 import { applySiteTheme, pickSiteTheme } from "@/lib/site-theme";
 
 export const SETTINGS_TABS = [
@@ -41,6 +41,8 @@ export function useSiteSettingsEditor() {
   const uploadHeroMutation = useUploadHeroImageMutation();
   const removeHeroMutation = useRemoveHeroImageMutation();
   const heroRef = useRef<HTMLInputElement>(null);
+  const hasInitializedRef = useRef(false);
+  const lastSavedRef = useRef("");
 
   const settingsForm = useForm<SiteSettingsFormValues>({
     resolver: zodResolver(siteSettingsFormSchema),
@@ -53,6 +55,8 @@ export function useSiteSettingsEditor() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("brand");
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<AutoSaveStatus>("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useAdminPageMeta({
     title: "Settings",
@@ -78,16 +82,36 @@ export function useSiteSettingsEditor() {
     [updateSettings],
   );
 
-  const {
-    status: saveStatus,
-    error: saveError,
-    syncBaseline,
-  } = useAutoSave(watched, persistSettings, {
-    enabled: data !== undefined,
-  });
+  const syncBaseline = useCallback((next: SiteSettingsFormValues) => {
+    lastSavedRef.current = JSON.stringify(next);
+    setSaveStatus("idle");
+    setSaveError(null);
+  }, []);
+
+  const saveNow = useCallback(async () => {
+    const current = settingsForm.getValues();
+    const snapshot = JSON.stringify(current);
+    if (snapshot === lastSavedRef.current) return;
+
+    setSaveStatus("saving");
+    setSaveError(null);
+    const result = await persistSettings(current);
+    if (result.ok) {
+      lastSavedRef.current = snapshot;
+      setSaveStatus("saved");
+    } else {
+      setSaveError(result.error ?? "Could not save.");
+      setSaveStatus("error");
+    }
+  }, [persistSettings, settingsForm]);
+
+  const saveOnBlur = useCallback(() => {
+    void saveNow();
+  }, [saveNow]);
 
   useEffect(() => {
-    if (!data) return;
+    if (!data || hasInitializedRef.current) return;
+    hasInitializedRef.current = true;
     const nextForm = toSiteSettingsForm(data);
     settingsForm.reset(nextForm);
     syncBaseline(nextForm);
@@ -104,8 +128,10 @@ export function useSiteSettingsEditor() {
   function updateField<K extends keyof SiteSettingsFormValues>(
     key: K,
     value: SiteSettingsFormValues[K],
+    options?: { save?: boolean },
   ) {
     settingsForm.setValue(key, value, { shouldDirty: true, shouldValidate: true });
+    if (options?.save) void saveNow();
   }
 
   function updateService(index: number, patch: Partial<SiteService>) {
@@ -177,6 +203,7 @@ export function useSiteSettingsEditor() {
     error,
     saveStatus,
     saveError,
+    saveOnBlur,
     updateField,
     updateService,
     updateCategoryList,

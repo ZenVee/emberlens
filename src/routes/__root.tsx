@@ -92,18 +92,10 @@ export const Route = createRootRouteWithContext<{
   settings: SiteSettings;
 }>()({
   beforeLoad: async ({ context }) => {
-    const cachedUser = context.queryClient.getQueryData<AuthUser | null>(authUserQueryKey);
-    const userPromise =
-      cachedUser !== undefined
-        ? (void context.queryClient.prefetchQuery({
-            queryKey: authUserQueryKey,
-            queryFn: fetchUserQuery,
-          }),
-          Promise.resolve(cachedUser))
-        : context.queryClient.ensureQueryData({
-            queryKey: authUserQueryKey,
-            queryFn: fetchUserQuery,
-          });
+    const userPromise = context.queryClient.ensureQueryData({
+      queryKey: authUserQueryKey,
+      queryFn: fetchUserQuery,
+    });
 
     const settingsPromise = context.queryClient.ensureQueryData({
       queryKey: siteSettingsQueryKey,

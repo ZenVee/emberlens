@@ -58,6 +58,7 @@ export function CategoryListEditor({
   items,
   onChange,
   onItemChange,
+  onBlur,
   placeholder = "Category name",
   addLabel = "Add category",
   className,
@@ -67,6 +68,7 @@ export function CategoryListEditor({
   items: string[];
   onChange: (items: string[]) => void;
   onItemChange: (index: number, value: string) => void;
+  onBlur?: () => void;
   placeholder?: string;
   addLabel?: string;
   className?: string;
@@ -83,6 +85,7 @@ export function CategoryListEditor({
             <Input
               value={item}
               onChange={(e) => onItemChange(index, e.target.value)}
+              onBlur={onBlur}
               placeholder={placeholder}
             />
             <Button
@@ -116,11 +119,13 @@ export function ColorField({
   hint,
   value,
   onChange,
+  onBlur,
 }: {
   label: string;
   hint?: string;
   value: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
 }) {
   return (
     <FormField label={label} hint={hint}>
@@ -128,13 +133,17 @@ export function ColorField({
         <input
           type="color"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            onChange(e.target.value);
+            onBlur?.();
+          }}
           className="h-10 w-12 shrink-0 cursor-pointer rounded-lg border border-border/60 bg-transparent p-1"
           aria-label={`${label} color picker`}
         />
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           placeholder="#000000"
           className="font-mono text-sm"
         />
