@@ -12,7 +12,7 @@ export {
   deletePhoto,
   bulkUpdatePhotos,
   bulkDeletePhotos,
-  regeneratePhotoWatermarks,
+  regeneratePhotoWatermark,
 } from "./photos-admin";
 export { fetchPublishedProjects, fetchProjectBySlug } from "./projects-public";
 export {

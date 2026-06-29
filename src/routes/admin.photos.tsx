@@ -102,6 +102,7 @@ function AdminPhotos() {
           clearSelection={page.clearSelection}
           setBulkDeleteOpen={page.setBulkDeleteOpen}
           runBulkRegenerateWatermarks={page.runBulkRegenerateWatermarks}
+          watermarkProgress={page.watermarkProgress}
         />
 
         <PhotoUploadModal

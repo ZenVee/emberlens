@@ -46,7 +46,7 @@ export const bulkDeletePhotosSchema = z.object({
   ids: z.array(z.string().min(1)).min(1).max(200),
 });
 
-export const regeneratePhotoWatermarksSchema = bulkDeletePhotosSchema;
+export const regeneratePhotoWatermarkSchema = idSchema;
 
 export const createPhotoFolderSchema = z.object({
   name: z.string().trim().min(1).max(120),

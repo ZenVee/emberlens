@@ -22,12 +22,12 @@ import {
   useCreatePhotoFolderMutation,
   useDeletePhotoFolderMutation,
   useDeletePhotoMutation,
-  useRegeneratePhotoWatermarksMutation,
+  useRegeneratePhotoWatermarkMutation,
   useUpdatePhotoFolderMutation,
   useUpdatePhotoMutation,
   useUploadPhotoMutation,
 } from "@/lib/mutations/photos";
-import { mutationErrorMessage, ServerMutationError } from "@/lib/mutations/shared";
+import { mutationErrorMessage } from "@/lib/mutations/shared";
 import { useSiteSettings } from "@/lib/site-settings-queries";
 
 export type PhotoStatusFilter = "all" | "published" | "draft" | "featured";
@@ -79,7 +79,11 @@ export function useAdminPhotosPage() {
   const deleteMutation = useDeletePhotoMutation();
   const bulkUpdateMutation = useBulkUpdatePhotosMutation();
   const bulkDeleteMutation = useBulkDeletePhotosMutation();
-  const regenerateMutation = useRegeneratePhotoWatermarksMutation();
+  const regenerateMutation = useRegeneratePhotoWatermarkMutation();
+  const [watermarkProgress, setWatermarkProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
   const createFolderMutation = useCreatePhotoFolderMutation();
   const updateFolderMutation = useUpdatePhotoFolderMutation();
   const deleteFolderMutation = useDeletePhotoFolderMutation();
@@ -327,27 +331,36 @@ export function useAdminPhotosPage() {
     const ids = [...selected];
     if (ids.length === 0) return;
     setError(null);
+    setWatermarkProgress({ done: 0, total: ids.length });
+
+    let succeeded = 0;
+    let failed = 0;
+
     try {
-      const result = await regenerateMutation.mutateAsync(ids);
-      if (result.failures.length > 0) {
+      for (const id of ids) {
+        try {
+          await regenerateMutation.mutateAsync(id);
+          succeeded += 1;
+        } catch {
+          failed += 1;
+        }
+        setWatermarkProgress({ done: succeeded + failed, total: ids.length });
+      }
+
+      if (failed > 0) {
         setError(
-          `Generated ${result.photos.length} watermark${result.photos.length === 1 ? "" : "s"}. ` +
-            `${result.failures.length} failed.`,
+          `Generated ${succeeded} watermark${succeeded === 1 ? "" : "s"}. ${failed} failed.`,
         );
       }
-    } catch (err) {
-      setError(mutationErrorMessage(err, "Could not generate watermarks."));
+    } finally {
+      setWatermarkProgress(null);
     }
   }
 
   async function regenerateEditWatermark(photo: DbPhoto) {
     setError(null);
     try {
-      const result = await regenerateMutation.mutateAsync([photo.id]);
-      const updated = result.photos[0];
-      if (!updated) {
-        throw new ServerMutationError(result.failures[0]?.error ?? "Could not generate watermark.");
-      }
+      const updated = await regenerateMutation.mutateAsync(photo.id);
       setEditing(updated);
       return updated;
     } catch (err) {
@@ -399,6 +412,7 @@ export function useAdminPhotosPage() {
     bulkFolder,
     setBulkFolder,
     bulkWorking: bulkUpdateMutation.isPending || regenerateMutation.isPending,
+    watermarkProgress,
     uploadOpen,
     setUploadOpen,
     error,

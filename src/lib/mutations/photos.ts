@@ -18,7 +18,7 @@ import {
   createPhotoFolder,
   deletePhoto,
   deletePhotoFolder,
-  regeneratePhotoWatermarks,
+  regeneratePhotoWatermark,
   updatePhoto,
   updatePhotoFolder,
   uploadPhoto,
@@ -121,22 +121,22 @@ export function useBulkDeletePhotosMutation() {
   });
 }
 
-export function useRegeneratePhotoWatermarksMutation() {
+export function useRegeneratePhotoWatermarkMutation() {
   const queryClient = useQueryClient();
-  const regenerateFn = useServerFn(regeneratePhotoWatermarks);
+  const regenerateFn = useServerFn(regeneratePhotoWatermark);
 
   return useMutation({
-    mutationFn: async (ids: string[]) => {
-      const result = await regenerateFn({ data: { ids } });
-      if (result.error && result.photos.length === 0) {
-        throw new ServerMutationError(result.error);
+    mutationFn: async (id: string) => {
+      const result = await regenerateFn({ data: { id } });
+      if (result.error || !result.photo) {
+        throw new ServerMutationError(result.error ?? "Watermark generation failed.");
       }
-      return result;
+      return result.photo;
     },
-    onSuccess: ({ photos }) => {
-      if (photos.length === 0) return;
-      const byId = new Map(photos.map((photo) => [photo.id, photo]));
-      updatePhotosInCache(queryClient, (prev) => prev.map((photo) => byId.get(photo.id) ?? photo));
+    onSuccess: (photo) => {
+      updatePhotosInCache(queryClient, (prev) =>
+        prev.map((cached) => (cached.id === photo.id ? photo : cached)),
+      );
     },
   });
 }

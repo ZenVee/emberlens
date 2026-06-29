@@ -19,6 +19,7 @@ type PhotoBulkBarProps = Pick<
   | "clearSelection"
   | "setBulkDeleteOpen"
   | "runBulkRegenerateWatermarks"
+  | "watermarkProgress"
 >;
 
 function BulkButton({
@@ -53,12 +54,17 @@ export function PhotoBulkBar({
   clearSelection,
   setBulkDeleteOpen,
   runBulkRegenerateWatermarks,
+  watermarkProgress,
 }: PhotoBulkBarProps) {
   if (selectedCount === 0) return null;
 
   return (
     <div className="sticky bottom-4 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-card/95 px-4 py-3 shadow-card backdrop-blur-sm">
-      <span className="mr-1 text-sm font-medium">{selectedCount} selected</span>
+      <span className="mr-1 text-sm font-medium">
+        {watermarkProgress
+          ? `Generating ${watermarkProgress.done}/${watermarkProgress.total}…`
+          : `${selectedCount} selected`}
+      </span>
       <BulkButton
         disabled={bulkWorking}
         onClick={() => void runBulkUpdate({ published: true })}
